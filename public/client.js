@@ -40,26 +40,10 @@
 		else
 			document.getElementById ("debugMode").innerHTML = "Debug OFF";
 	};
-	
-	function sprite (options) {
-		var that = {};
-		that.context = options.context;
-		that.width = options.width;
-		that.height = options.height;
-		that.x = options.x;
-		that.y = options.y;
-		that.image = options.image;
-		
-		that.render = () => {
-			that.context.drawImage ();
-		};
-		
-		return that;
-	};
 
 	function loadTileSet (filename) {
 			tileSet[tileSetsLoaded] = new Image ();
-			tileSet[tileSetsLoaded].onload = () => {
+			tileSet[tileSetsLoaded].onload = function () {
 				if (tileSet[tileSetsLoaded].naturalWidth % TILE_SIZE == 0 && tileSet[tileSetsLoaded].naturalWidth % TILE_SIZE == 0){
 					console.log ("correct dimensions");
 					numTilesInSet[tileSetsLoaded] = parseInt ((tileSet[tileSetsLoaded].naturalWidth / TILE_SIZE)) * parseInt ((tileSet[tileSetsLoaded].naturalHeight / TILE_SIZE));
@@ -105,7 +89,7 @@
 		else
 			canvas.drawImage (tileSet[tileSetId], TILE_SIZE * (inX - 1), TILE_SIZE * (inY - 1), TILE_SIZE, TILE_SIZE, x, y, TILE_SIZE, TILE_SIZE);
 	}
-	sock.on ('dimensions', (dim) => {
+	sock.on ('dimensions', function (dim) {
 		document.getElementById ('canvas').width = dim.width;
 		document.getElementById ('canvas').height = dim.height;
 		
@@ -125,12 +109,12 @@
 		}
 	}
 	
-	sock.on ('id', (_id) => {
+	sock.on ('id', function (_id) {
 		id = _id;
 		console.log ("your id is: " + id);
 	});
 	
-	sock.on ('map', (data) => {
+	sock.on ('map', function (data) {
 
 		map = data.map;
 		console.log ("received map with size " + (data.map.length - 1) + "x" + data.map[1].length);
@@ -152,7 +136,7 @@
 			offsetY = 0;
 	});
 	
-	sock.on ('position', (data) => {
+	sock.on ('position', function (data) {
 		canvas.clearRect (0,0,WINDOW_WIDTH,WINDOW_HEIGHT);
 		
 		drawMap ();
@@ -177,7 +161,7 @@
 		}
 	});
 	
-	document.onkeydown = (event) => {
+	document.onkeydown = function (event) {
 		if (event.keyCode === 68 || event.keyCode == 39) {// d
 			sock.emit ("keyPress", { inputId :'right', state : true });
 			facingLeft = false;
@@ -197,7 +181,7 @@
 		}
 	};
 	
-	document.onkeyup = (event) => {
+	document.onkeyup = function (event) {
 		if (event.keyCode === 68 || event.keyCode == 39) // d
 			sock.emit ("keyPress", { inputId :'right', state : false });
 		if (event.keyCode === 83) // s
