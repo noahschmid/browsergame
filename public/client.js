@@ -57,16 +57,18 @@
 
 	function loadTileSet (filename) {
 			tileSet[tileSetsLoaded] = new Image ();
+			tileSet[tileSetsLoaded].onload = () => {
+				if (tileSet[tileSetsLoaded].naturalWidth % TILE_SIZE == 0 && tileSet[tileSetsLoaded].naturalWidth % TILE_SIZE == 0){
+					console.log ("correct dimensions");
+					numTilesInSet[tileSetsLoaded] = parseInt ((tileSet[tileSetsLoaded].naturalWidth / TILE_SIZE)) * parseInt ((tileSet[tileSetsLoaded].naturalHeight / TILE_SIZE));
+					totalTiles += numTilesInSet[tileSetsLoaded];
+					console.log ("tiles in set: " + numTilesInSet [tileSetsLoaded]);
+					tileSetsLoaded ++;
+				} else {
+					console.log ("tileset has wrong dimensions!");
+				}
+			};
 			tileSet[tileSetsLoaded].src = filename;
-		if (tileSet[tileSetsLoaded].naturalWidth % TILE_SIZE == 0 && tileSet[tileSetsLoaded].naturalWidth % TILE_SIZE == 0){
-			console.log ("correct dimensions");
-			numTilesInSet[tileSetsLoaded] = parseInt ((tileSet[tileSetsLoaded].naturalWidth / TILE_SIZE)) * parseInt ((tileSet[tileSetsLoaded].naturalHeight / TILE_SIZE));
-			totalTiles += numTilesInSet[tileSetsLoaded];
-			console.log ("tiles in set: " + numTilesInSet [tileSetsLoaded]);
-			tileSetsLoaded ++;
-		} else {
-			console.log ("tileset has wrong dimensions!");
-		}
 	}
 	
 	function drawTile (tileIndex, x, y, useOffset) {
@@ -128,8 +130,6 @@
 		mapWidth = data.mapWidth;
 		mapHeight = data.mapHeight;
 		TILE_SIZE = data.tileSize;
-		
-		
 		
 		for (let i = 0; i < data.tileSets.length; i++)
 			loadTileSet (data.tileSets[i]);

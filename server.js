@@ -354,6 +354,7 @@ let Player = function (id) {
 };
 
 io.on ('connection', (client)=> { 
+	console.log (map);
 	client.userid = Math.random ();
 	console.log ('client[' + client.userid + '] connected.');
 	CLIENTS[client.userid] = client;
