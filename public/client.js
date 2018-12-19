@@ -1,7 +1,7 @@
 	var canvas = document.getElementById ("canvas").getContext ("2d");
 	canvas.font = '30px Arial';
-	
-	const sock = io ();
+	//let io = require ('socket.io');
+	let sock = io ();
 	
 	var playerImage = new Image ();
 	playerImage.src = "hero.png";
