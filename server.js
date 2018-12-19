@@ -6,7 +6,10 @@ const app = express ();
 
 const clientPath = __dirname + '/../client/';
 console.log (clientPath + " new");
-app.use (express.static (clientPath));
+app.get ('/', (req, res) => {
+	res.sendFile (__dirname + '/index.html');
+});
+app.use (express.static ('public'));
 
 const server = http.createServer (app);
 const io = socketio(server);
