@@ -17,7 +17,7 @@
 	var mapHeight = 0;
 	
 	var TILE_SIZE = 0;
-	var tileSet = new Array ();
+	let tileSet = [];
 	var tileSetsLoaded = 0;
 	var numTilesInSet = {};
 	
@@ -30,6 +30,8 @@
 	var totalTiles = 0;
 	
 	let debugMode = false;
+	
+	let id = 0;
 	
 	document.getElementById ("debugMode").onclick = function () {
 		debugMode = !debugMode;
@@ -123,6 +125,11 @@
 		}
 	}
 	
+	sock.on ('id', (_id) => {
+		id = _id;
+		console.log ("your id is: " + id);
+	});
+	
 	sock.on ('map', (data) => {
 
 		map = data.map;
@@ -150,19 +157,21 @@
 		
 		drawMap ();
 		
-		
 		for (var i = 0; i < data.length; i++) {
 			let bbox = { x:data[i].x+16, y:data[i].y, width:32, height:64 };
-			//console.log (Math.floor(data[i].animPhase) % 10);
-			canvas.drawImage (playerImage, 64 * (Math.floor(data[i].animPhase) % 10), 64 * Math.floor (Math.floor(data[i].animPhase) / 10), 64, 64, data[i].x, data[i].y, 64, 64);
+			
+			if (data[i].id == id){
+				offsetX = data[i].offsetX;
+				offsetY = data[i].offsetY;
+			}
+			
+			canvas.drawImage (playerImage, 64 * (Math.floor(data[i].animPhase) % 10), 64 * Math.floor (Math.floor(data[i].animPhase) / 10), 64, 64, data[i].x - data[i].offsetX + offsetX, data[i].y - data[i].offsetY + offsetY, 64, 64);
 			canvas.strokeStyle = "red";
+			
 			if (debugMode == true) {
 				canvas.beginPath ();
 				canvas.rect (bbox.x, bbox.y, bbox.width, bbox.height);
-				canvas.rect(Math.floor((self.x + 16 - self.offsetX) / TILE_SIZE) * TILE_SIZE, Math.floor((self.y + 64 - self.offsetY) / TILE_SIZE) * TILE_SIZE, 32, 32);
-				//canvas.rect ((Math.floor ((data[i].x) / TILE_SIZE)) * TILE_SIZE, (Math.floor((data[i].y + 32 - data[i].offsetY) / TILE_SIZE)) * TILE_SIZE + data[i].offsetY, TILE_SIZE, TILE_SIZE);
-				//canvas.rect ((Math.floor ((data[i].x + 32) / TILE_SIZE)) * TILE_SIZE, (Math.floor((data[i].y + 32 - data[i].offsetY) / TILE_SIZE) ) * TILE_SIZE + data[i].offsetY, TILE_SIZE, TILE_SIZE);
-				//canvas.rect ((Math.floor ((data[i].x + 64) / TILE_SIZE)) * TILE_SIZE, (Math.floor((data[i].y + 32 - data[i].offsetY) / TILE_SIZE) ) * TILE_SIZE + data[i].offsetY, TILE_SIZE, TILE_SIZE);
+				canvas.rect(Math.floor((self.x + 16 - data[i].offsetX) / TILE_SIZE) * TILE_SIZE, Math.floor((self.y + 64 - data[i].offsetY) / TILE_SIZE) * TILE_SIZE, 32, 32);
 				canvas.stroke ();
 			}
 		}

@@ -164,12 +164,10 @@ function printMap () {
 
 
 function tileCollider (x, y) {
-	//console.log (map[y+1][x][0]);
 	if (map[y+1][x][0] < 0)
 		return true;
 	return false;
 }
-
 
 loadMap ("file://" + __dirname + "/map.txt");
 
@@ -195,6 +193,8 @@ let Player = function (id) {
 		canJump:false,
 		offsetX:0,
 		offsetY:0,
+		scrollX:false,
+		scrollY:false,
 		yVel:0,
 		doubleJump:false
 	};
@@ -210,12 +210,28 @@ let Player = function (id) {
 		if (self.pressingLeft){
 			self.facingLeft = true;
 			self.x-=self.maxSpeed;
+			
+			if (self.x < 4 * TILE_SIZE) {
+				self.x = self.oldX;
+				self.offsetX += self.maxSpeed;
+				self.scrollX = true;
+			} else
+				self.scrollX = false;
+			
 			if (self.currentAnimState != animStates.jumping) 
 				self.currentAnimState = animStates.walking;
 		}
 		if (self.pressingRight) {
 			self.facingLeft = false;
 			self.x+=self.maxSpeed;
+			
+			if (self.x > WINDOW_W - 4 * TILE_SIZE) {
+				self.x = self.oldX;
+				self.offsetX -= self.maxSpeed;
+				self.scrollX = true;
+			} else
+				self.scrollX = false;
+			
 			if (self.currentAnimState != animStates.jumping) 
 				self.currentAnimState = animStates.walking;
 		}
@@ -241,21 +257,6 @@ let Player = function (id) {
 		}
 		
 		self.y += self.yVel;
-		
-		/*
-		if (self.x < 0) 
-			self.x = 0;
-			
-		if (self.y < 0) 
-			self.y = 0;
-		
-		if (self.y > WINDOW_H - 64) {
-			self.y = WINDOW_H - 64;
-			self.grounded = true;
-		}
-		
-		if (self.x > WINDOW_W  - 64)
-			self.x = WINDOW_W - 64;*/
 		
 		if (self.currentAnimState == animStates.walking && !self.facingLeft) 
 			self.animPhase = (self.animPhase + 0.3) % 6;
@@ -325,23 +326,28 @@ let Player = function (id) {
 						
 						if (bbox.x < relX + TILE_SIZE && bbox.x + bbox.width > relX &&
 							bbox.y < relY + TILE_SIZE && bbox.y + bbox.height > relY) {
-								if ((linesIntersect (topLeft, topRight, lastPointBL, newPointBL) || 
+								if ((linesIntersect (topLeft, topRight, lastPointBL, newPointBL) ||  //bottom
 									linesIntersect (topLeft, topRight, lastPointBR, newPointBR)) && self.grounded) {
 									self.y = (sy - 1) * TILE_SIZE - 32 + self.offsetY;
-								} else if ( linesIntersect (topRight, bottomRight, lastPointTL, newPointTL) || 
-										 	linesIntersect (topRight, bottomRight, lastPointBL, newPointBL) || 
+								} else if ( linesIntersect (topRight, bottomRight, lastPointTL, newPointTL) ||  //left
+											linesIntersect (topRight, bottomRight, lastPointBL, newPointBL) || 
 											linesIntersect (topRight, bottomRight, lastPointML, newPointML)) {
-									self.x = (sx + 1) * TILE_SIZE + self.offsetX - 16;
-								} else if ( linesIntersect (topLeft, bottomLeft, lastPointTR, newPointTR) || 
+									if (!self.scrollX)
+										self.x = (sx + 1) * TILE_SIZE + self.offsetX - 16;
+									else
+										self.offsetX = self.x - (sx + 1) * TILE_SIZE - 16;
+								} else if ( linesIntersect (topLeft, bottomLeft, lastPointTR, newPointTR) ||  //right
 										 	linesIntersect (topLeft, bottomLeft, lastPointBR, newPointBR) || 
 											linesIntersect (topLeft, bottomLeft, lastPointMR, newPointMR)) {
-									self.x = (sx) * TILE_SIZE + self.offsetX - 48;
-								} else if ( linesIntersect (bottomLeft, bottomRight, lastPointTL, newPointTL) ||
+									if (!self.scrollX)
+										self.x = (sx) * TILE_SIZE + self.offsetX - 48;
+									else
+										self.offsetX = self.x - sx * TILE_SIZE - 48;
+								} else if ( linesIntersect (bottomLeft, bottomRight, lastPointTL, newPointTL) || //top
 											linesIntersect (bottomLeft, bottomRight, lastPointTR, newPointTR)) {
 									self.y = (sy + 1) * TILE_SIZE + self.offsetY;
 									if (self.currentAnimState == animStates.jumping)
 										self.currentAnimState = animStates.idle;
-									console.log ("top collision");
 								}
 								
 						}
@@ -417,7 +423,7 @@ setInterval (() => {
 		let player = PLAYERS[i];
 		player.updatePosition ();
 		player.checkCollisions ();
-		pack.push ( { x:player.x, y:player.y, number:player.number, animPhase:player.animPhase, offsetY:player.offsetY } );
+		pack.push ( { x:player.x, y:player.y, number:player.number, animPhase:player.animPhase, offsetY:player.offsetY, offsetX:player.offsetX, id:player.id } );
 	}
 	
 	for (let e in CLIENTS) {
