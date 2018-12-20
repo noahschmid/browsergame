@@ -351,8 +351,8 @@
 		
 		//checkCollisions ();
 		
-		offsetX = localPlayer.x - (WINDOW_WIDTH / 2 - 32);
-		offsetY = localPlayer.y - (WINDOW_HEIGHT / 2 - 32);
+		offsetX = Math.floor(localPlayer.x - (WINDOW_WIDTH / 2 - 32));
+		offsetY = Math.floor(localPlayer.y - (WINDOW_HEIGHT / 2 - 32));
 		
 		velX = 0;
 		velY = 0;
