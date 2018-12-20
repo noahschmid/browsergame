@@ -148,11 +148,12 @@
 			if (data[i].id == id) {
 				offsetX = data[i].x - (WINDOW_WIDTH / 2 - 32);
 				offsetY = data[i].y - (WINDOW_HEIGHT / 2 - 32);
-			}
+				
+				canvas.drawImage (playerImage, 64 * (Math.floor(data[i].animPhase) % 10), 64 * Math.floor (Math.floor(data[i].animPhase) / 10), 64, 64, WINDOW_WIDTH / 2 - 32, WINDOW_HEIGHT / 2 - 32, 64, 64);
+			} else
+				canvas.drawImage (playerImage, 64 * (Math.floor(data[i].animPhase) % 10), 64 * Math.floor (Math.floor(data[i].animPhase) / 10), 64, 64, data[i].x - offsetX, data[i].y - offsetY, 64, 64);
 			
-			//canvas.drawImage (playerImage, 64 * (Math.floor(data[i].animPhase) % 10), 64 * Math.floor (Math.floor(data[i].animPhase) / 10), 64, 64, data[i].x + offsetX, data[i].y + offsetY, 64, 64);
 			
-			canvas.drawImage (playerImage, 64 * (Math.floor(data[i].animPhase) % 10), 64 * Math.floor (Math.floor(data[i].animPhase) / 10), 64, 64, WINDOW_WIDTH / 2 - 32, WINDOW_HEIGHT / 2 - 32, 64, 64);
 			
 			canvas.strokeStyle = "red";
 			
