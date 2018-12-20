@@ -85,7 +85,7 @@
 		// sx sy swidth sheight x y width height
 		
 		if (useOffset)
-			canvas.drawImage (tileSet[tileSetId], TILE_SIZE * (inX - 1), TILE_SIZE * (inY - 1), TILE_SIZE, TILE_SIZE, x + offsetX, y + offsetY, TILE_SIZE, TILE_SIZE);
+			canvas.drawImage (tileSet[tileSetId], TILE_SIZE * (inX - 1), TILE_SIZE * (inY - 1), TILE_SIZE, TILE_SIZE, x - offsetX, y - offsetY, TILE_SIZE, TILE_SIZE);
 		else
 			canvas.drawImage (tileSet[tileSetId], TILE_SIZE * (inX - 1), TILE_SIZE * (inY - 1), TILE_SIZE, TILE_SIZE, x, y, TILE_SIZE, TILE_SIZE);
 	}
@@ -98,11 +98,11 @@
 	});
 	
 	function drawMap () {
-		for (var l = 0; l < 5; l++) {
+		for (var l = 1; l < 5; l++) {
 			for (var y = 1; y < parseInt (mapWidth); y ++){
 				for (var x = 0; x < parseInt (mapHeight); x++) {
-					if (Math.abs(map[y][x][l]) != 0 && x * TILE_SIZE + offsetX < WINDOW_WIDTH && y * TILE_SIZE + offsetY < WINDOW_HEIGHT) {
-						drawTile (Math.abs(map[y][x][l]), x * TILE_SIZE, y * TILE_SIZE, true);
+					if (map[y][x][l] != 0 && x * TILE_SIZE - offsetX < WINDOW_WIDTH && y * TILE_SIZE - offsetY < WINDOW_HEIGHT) {
+						drawTile (map[y][x][l], x * TILE_SIZE, y * TILE_SIZE, true);
 					}
 				}
 			}
@@ -130,10 +130,11 @@
 			
 		offsetX = 0;
 		
+		/*
 		if (mapHeight * TILE_SIZE > WINDOW_HEIGHT)
 			offsetY = ((mapHeight - 1) * TILE_SIZE - WINDOW_HEIGHT) * -1;
 		else
-			offsetY = 0;
+			offsetY = 0;*/
 	});
 	
 	sock.on ('position', function (data) {
@@ -144,12 +145,15 @@
 		for (var i = 0; i < data.length; i++) {
 			let bbox = { x:data[i].x+16, y:data[i].y, width:32, height:64 };
 			
-			if (data[i].id == id){
-				offsetX = data[i].offsetX;
-				offsetY = data[i].offsetY;
+			if (data[i].id == id) {
+				offsetX = data[i].x - (WINDOW_WIDTH / 2 - 32);
+				offsetY = data[i].y - (WINDOW_HEIGHT / 2 - 32);
 			}
 			
-			canvas.drawImage (playerImage, 64 * (Math.floor(data[i].animPhase) % 10), 64 * Math.floor (Math.floor(data[i].animPhase) / 10), 64, 64, data[i].x - data[i].offsetX + offsetX, data[i].y - data[i].offsetY + offsetY, 64, 64);
+			//canvas.drawImage (playerImage, 64 * (Math.floor(data[i].animPhase) % 10), 64 * Math.floor (Math.floor(data[i].animPhase) / 10), 64, 64, data[i].x + offsetX, data[i].y + offsetY, 64, 64);
+			
+			canvas.drawImage (playerImage, 64 * (Math.floor(data[i].animPhase) % 10), 64 * Math.floor (Math.floor(data[i].animPhase) / 10), 64, 64, WINDOW_WIDTH / 2 - 32, WINDOW_HEIGHT / 2 - 32, 64, 64);
+			
 			canvas.strokeStyle = "red";
 			
 			if (debugMode == true) {

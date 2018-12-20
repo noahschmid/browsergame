@@ -39,6 +39,8 @@ let map = new Array ();
 map[0] = new Array ();
 map[0][0] = new Array ();
 
+let startPos = { x:0, y:0 };
+
 function Point (x, y) {
 	this.x = x;
 	this.y = y;
@@ -98,7 +100,6 @@ function loadMap(file)
 				
 				let pos = -1;
 				let x = 0;
-				console.log (2);
 				for (let i = 0; i < lines.length; i ++) {
 					if (pos == -1) {
 						MAP_W = parseInt(lines[i].substring (0, lines[i].indexOf ("x")));
@@ -149,6 +150,15 @@ function loadMap(file)
 	
     rawFile.send(null);
 	console.log ("map loaded.");
+	
+	for (let y = 1; y < MAP_H; y++) {
+		for (let x = 0; x < MAP_W; x++) {
+			if (map [y][x][0] == 2) {
+				startPos.x = x * TILE_SIZE;
+				startPos.y = (y-1) * TILE_SIZE;
+			}
+		}
+	}
 }
 
 
@@ -156,7 +166,7 @@ function printMap () {
 	for (let y = 1; y < MAP_H; y++) {
 		let s = "";
 		for (let x = 0; x < MAP_W; x++) {
-			s = s + map [y][x][0];
+			s = s + map [y][x][1];
 		}
 		console.log (s);
 	}
@@ -164,7 +174,7 @@ function printMap () {
 
 
 function tileCollider (x, y) {
-	if (map[y+1][x][0] < 0)
+	if (map[y+1][x][0] == 1)
 		return true;
 	return false;
 }
@@ -173,8 +183,8 @@ loadMap ("file://" + __dirname + "/map.txt");
 
 let Player = function (id) {
 	let self = {
-		x:250,
-		y:0,
+		x:startPos.x,
+		y:startPos.y,
 		oldX:0,
 		oldY:0,
 		id:id,
@@ -191,8 +201,6 @@ let Player = function (id) {
 		facingLeft:false,
 		jumpCounter:0,
 		canJump:false,
-		offsetX:0,
-		offsetY:0,
 		scrollX:false,
 		scrollY:false,
 		yVel:0,
@@ -211,26 +219,12 @@ let Player = function (id) {
 			self.facingLeft = true;
 			self.x-=self.maxSpeed;
 			
-			if (self.x < 4 * TILE_SIZE) {
-				self.x = self.oldX;
-				self.offsetX += self.maxSpeed;
-				self.scrollX = true;
-			} else
-				self.scrollX = false;
-			
 			if (self.currentAnimState != animStates.jumping) 
 				self.currentAnimState = animStates.walking;
 		}
 		if (self.pressingRight) {
 			self.facingLeft = false;
 			self.x+=self.maxSpeed;
-			
-			if (self.x > WINDOW_W - 4 * TILE_SIZE) {
-				self.x = self.oldX;
-				self.offsetX -= self.maxSpeed;
-				self.scrollX = true;
-			} else
-				self.scrollX = false;
 			
 			if (self.currentAnimState != animStates.jumping) 
 				self.currentAnimState = animStates.walking;
@@ -286,7 +280,6 @@ let Player = function (id) {
 	};
 	
 	self.checkCollisions = () => {
-			
 			let bbox = { x:self.x+16, y:self.y, width:32, height:64 };
 			
 			let relX = 0, relY = 0;
@@ -296,13 +289,13 @@ let Player = function (id) {
 			for (let sy = 1; sy < MAP_H; sy++) {
 				for (let sx = 0; sx < MAP_W; sx++) {
 					if (tileCollider (sx, sy-1)) {
-						relX = sx * TILE_SIZE + self.offsetX;
-						relY = (sy) * TILE_SIZE + self.offsetY;
+						relX = sx * TILE_SIZE; // + self.offsetX;
+						relY = (sy) * TILE_SIZE; // + self.offsetY;
 					
-						if ((sy + 1) == Math.floor ((self.y + 64 - self.offsetY) / TILE_SIZE) + 1 && sx == Math.floor ((self.x + 16 - self.offsetX) / TILE_SIZE) && tileCollider (sx,sy - 1))
+						if ((sy + 1) == Math.floor ((self.y + 64) / TILE_SIZE) + 1 && sx == Math.floor ((self.x + 16) / TILE_SIZE) && tileCollider (sx,sy - 1))
 							self.grounded = true;
 					
-						if ((sy + 1) == Math.floor ((self.y + 64 - self.offsetY) / TILE_SIZE) + 1 && sx == Math.floor ((self.x + 48 - self.offsetX) / TILE_SIZE) && tileCollider (sx,sy - 1))
+						if ((sy + 1) == Math.floor ((self.y + 64) / TILE_SIZE) + 1 && sx == Math.floor ((self.x + 48) / TILE_SIZE) && tileCollider (sx,sy - 1))
 							self.grounded = true;
 					
 						let topLeft = new Point (relX, relY);
@@ -328,24 +321,18 @@ let Player = function (id) {
 							bbox.y < relY + TILE_SIZE && bbox.y + bbox.height > relY) {
 								if ((linesIntersect (topLeft, topRight, lastPointBL, newPointBL) ||  //bottom
 									linesIntersect (topLeft, topRight, lastPointBR, newPointBR)) && self.grounded) {
-									self.y = (sy - 1) * TILE_SIZE - 32 + self.offsetY;
+									self.y = (sy - 1) * TILE_SIZE - 32; // + self.offsetY;
 								} else if ( linesIntersect (topRight, bottomRight, lastPointTL, newPointTL) ||  //left
 											linesIntersect (topRight, bottomRight, lastPointBL, newPointBL) || 
 											linesIntersect (topRight, bottomRight, lastPointML, newPointML)) {
-									if (!self.scrollX)
-										self.x = (sx + 1) * TILE_SIZE + self.offsetX - 16;
-									else
-										self.offsetX = self.x - (sx + 1) * TILE_SIZE - 16;
+										self.x = (sx + 1) * TILE_SIZE - 16; //+ self.offsetX - 16;
 								} else if ( linesIntersect (topLeft, bottomLeft, lastPointTR, newPointTR) ||  //right
 										 	linesIntersect (topLeft, bottomLeft, lastPointBR, newPointBR) || 
 											linesIntersect (topLeft, bottomLeft, lastPointMR, newPointMR)) {
-									if (!self.scrollX)
-										self.x = (sx) * TILE_SIZE + self.offsetX - 48;
-									else
-										self.offsetX = self.x - sx * TILE_SIZE - 48;
+										self.x = (sx) * TILE_SIZE - 48;// + self.offsetX - 48;
 								} else if ( linesIntersect (bottomLeft, bottomRight, lastPointTL, newPointTL) || //top
 											linesIntersect (bottomLeft, bottomRight, lastPointTR, newPointTR)) {
-									self.y = (sy + 1) * TILE_SIZE + self.offsetY;
+									self.y = (sy + 1) * TILE_SIZE; // + self.offsetY;
 									if (self.currentAnimState == animStates.jumping)
 										self.currentAnimState = animStates.idle;
 								}
@@ -360,7 +347,6 @@ let Player = function (id) {
 };
 
 io.on ('connection', (client)=> { 
-	console.log (map);
 	client.userid = Math.random ();
 	console.log ('client[' + client.userid + '] connected.');
 	CLIENTS[client.userid] = client;
@@ -423,7 +409,7 @@ setInterval (() => {
 		let player = PLAYERS[i];
 		player.updatePosition ();
 		player.checkCollisions ();
-		pack.push ( { x:player.x, y:player.y, number:player.number, animPhase:player.animPhase, offsetY:player.offsetY, offsetX:player.offsetX, id:player.id } );
+		pack.push ( { x:player.x, y:player.y, number:player.number, animPhase:player.animPhase, id:player.id } );
 	}
 	
 	for (let e in CLIENTS) {
