@@ -262,31 +262,6 @@
 		for (var i = 0; i < data.length; i++) 
 			if (data[i].id == id)
 				localPlayer = data[i];
-		/*
-		canvas.clearRect (0,0,WINDOW_WIDTH,WINDOW_HEIGHT);
-		
-		drawMap ();
-		
-		for (var i = 0; i < data.length; i++) {
-			let bbox = { x:data[i].x+16, y:data[i].y, width:32, height:64 };
-			
-			if (data[i].id == id) {
-				offsetX = data[i].x - (WINDOW_WIDTH / 2 - 32);
-				offsetY = data[i].y - (WINDOW_HEIGHT / 2 - 32);
-				
-				canvas.drawImage (playerImage, 64 * (Math.floor(data[i].animPhase) % 10), 64 * Math.floor (Math.floor(data[i].animPhase) / 10), 64, 64, WINDOW_WIDTH / 2 - 32, WINDOW_HEIGHT / 2 - 32, 64, 64);
-			} else
-				canvas.drawImage (playerImage, 64 * (Math.floor(data[i].animPhase) % 10), 64 * Math.floor (Math.floor(data[i].animPhase) / 10), 64, 64, data[i].x - offsetX, data[i].y - offsetY, 64, 64);
-
-			canvas.strokeStyle = "red";
-			
-			if (debugMode == true) {
-				canvas.beginPath ();
-				canvas.rect (bbox.x, bbox.y, bbox.width, bbox.height);
-				canvas.rect(Math.floor((self.x + 16 - data[i].offsetX) / TILE_SIZE) * TILE_SIZE, Math.floor((self.y + 64 - data[i].offsetY) / TILE_SIZE) * TILE_SIZE, 32, 32);
-				canvas.stroke ();
-			}
-		}*/
 	});
 	
 	document.onkeydown = function (event) {
@@ -351,8 +326,8 @@
 		
 		//checkCollisions ();
 		
-		offsetX = Math.floor(localPlayer.x - (WINDOW_WIDTH / 2 - 32));
-		offsetY = Math.floor(localPlayer.y - (WINDOW_HEIGHT / 2 - 32));
+		offsetX = localPlayer.x - (WINDOW_WIDTH / 2 - 32);
+		offsetY = localPlayer.y - (WINDOW_HEIGHT / 2 - 32);
 		
 		velX = 0;
 		velY = 0;

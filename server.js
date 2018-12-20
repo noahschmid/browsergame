@@ -395,7 +395,9 @@ io.on ('connection', (client)=> {
 		client.userid = freeIds[pos];
 		freeIds.splice (pos, 1);
 	}
-		
+	
+	client.userid = Math.random ();
+	
 	console.log ('client[' + client.userid + '] connected.');
 	CLIENTS[client.userid] = client;
 	
@@ -491,3 +493,19 @@ let update = (delta) => {
 };
 
 serverLoop ();
+/*
+setInterval (() => {
+	let pack = [];
+	for (let i in PLAYERS) {
+		let player = PLAYERS[i];
+		player.updatePosition ();
+		player.checkCollisions ();
+		player.processAttacks ();
+		pack.push ( { x:player.x, y:player.y, number:player.number, animPhase:player.animPhase, id:player.id } );
+	}
+	
+	for (let e in CLIENTS) {
+		let client = CLIENTS[e];
+		client.emit ('position', pack);
+	}
+}, 1000/60);*/
