@@ -180,7 +180,7 @@
 		if (event.keyCode === 87) { // w
 			sock.emit ("keyPress", { inputId : 'up', state : true });
 		}
-		if (event.keyCode == 32) {
+		if (event.keyCode == 32 || event.keyCode == 38) {
 			sock.emit ("keyPress", { inputId : 'space', state : true });
 		}
 	};
@@ -194,7 +194,7 @@
 			sock.emit ("keyPress", { inputId :'left', state : false });
 		if (event.keyCode === 87) // w
 			sock.emit ("keyPress", { inputId : 'up', state : false });
-		if (event.keyCode == 32) {
+		if (event.keyCode == 32 || event.keyCode == 38) {
 			sock.emit ("keyPress", { inputId : 'space', state : false });
 		}
 	};
