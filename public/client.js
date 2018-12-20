@@ -33,6 +33,19 @@
 	
 	let id = 0;
 	
+	let targetFPS = 60;
+	let now, dt,last = timestamp();
+	let step = 1/targetFPS;
+	
+	let PLAYERS = {};
+	
+	let velX = 0;
+	let velY = 0;
+	
+	function timestamp() {
+	  return window.performance && window.performance.now ? window.performance.now() : new Date().getTime();
+	}
+	
 	document.getElementById ("debugMode").onclick = function () {
 		debugMode = !debugMode;
 		if (debugMode)
@@ -129,15 +142,12 @@
 			console.log ("tileset: " + tileSet[i]);
 			
 		offsetX = 0;
-		
-		/*
-		if (mapHeight * TILE_SIZE > WINDOW_HEIGHT)
-			offsetY = ((mapHeight - 1) * TILE_SIZE - WINDOW_HEIGHT) * -1;
-		else
-			offsetY = 0;*/
 	});
 	
 	sock.on ('position', function (data) {
+		
+		PLAYERS = data;
+		/*
 		canvas.clearRect (0,0,WINDOW_WIDTH,WINDOW_HEIGHT);
 		
 		drawMap ();
@@ -152,9 +162,7 @@
 				canvas.drawImage (playerImage, 64 * (Math.floor(data[i].animPhase) % 10), 64 * Math.floor (Math.floor(data[i].animPhase) / 10), 64, 64, WINDOW_WIDTH / 2 - 32, WINDOW_HEIGHT / 2 - 32, 64, 64);
 			} else
 				canvas.drawImage (playerImage, 64 * (Math.floor(data[i].animPhase) % 10), 64 * Math.floor (Math.floor(data[i].animPhase) / 10), 64, 64, data[i].x - offsetX, data[i].y - offsetY, 64, 64);
-			
-			
-			
+
 			canvas.strokeStyle = "red";
 			
 			if (debugMode == true) {
@@ -163,13 +171,14 @@
 				canvas.rect(Math.floor((self.x + 16 - data[i].offsetX) / TILE_SIZE) * TILE_SIZE, Math.floor((self.y + 64 - data[i].offsetY) / TILE_SIZE) * TILE_SIZE, 32, 32);
 				canvas.stroke ();
 			}
-		}
+		}*/
 	});
 	
 	document.onkeydown = function (event) {
 		if (event.keyCode === 68 || event.keyCode == 39) {// d
 			sock.emit ("keyPress", { inputId :'right', state : true });
 			facingLeft = false;
+			velX = 340;
 		}
 		if (event.keyCode === 83){ // s
 			sock.emit ("keyPress", { inputId :'down', state : true });
@@ -177,6 +186,7 @@
 		if (event.keyCode === 65 || event.keyCode == 37) {// a
 			sock.emit ("keyPress", { inputId :'left', state : true });
 			facingLeft = true;
+			velX = -340;
 		}
 		if (event.keyCode === 87) { // w
 			sock.emit ("keyPress", { inputId : 'up', state : true });
@@ -184,6 +194,9 @@
 		if (event.keyCode == 32 || event.keyCode == 38) {
 			sock.emit ("keyPress", { inputId : 'space', state : true });
 		}
+		
+		if (event.keyCode == 91) 
+			sock.emit ("keyPress", { inputId : 'fire', state : true });
 	};
 	
 	document.onkeyup = function (event) {
@@ -195,7 +208,64 @@
 			sock.emit ("keyPress", { inputId :'left', state : false });
 		if (event.keyCode === 87) // w
 			sock.emit ("keyPress", { inputId : 'up', state : false });
-		if (event.keyCode == 32 || event.keyCode == 38) {
+		if (event.keyCode == 32 || event.keyCode == 38) 
 			sock.emit ("keyPress", { inputId : 'space', state : false });
+		if (event.keyCode == 91) 
+			sock.emit ("keyPress", { inputId : 'fire', state : false });
+	};
+	
+	
+	function clientLoop () {
+		now = timestamp ();
+		dt = (now - last) / 1000;
+		
+		while (dt > step) {
+			dt = dt - step;
+			update (step);
+		}
+		
+		render (dt);
+		
+		requestAnimationFrame (clientLoop);
+	}
+	
+	let update = function (delta) {
+		for (var i = 0; i < PLAYERS.length; i++) {
+			if (PLAYERS[i].id == id) {
+				PLAYERS[i].x += Math.floor (velX * delta);
+				PLAYERS[i].y += Math.floor (velY * delta);
+				
+				velX = 0;
+				velY = 0;
+			}
 		}
 	};
+	
+	let render = function (delta) {
+		canvas.clearRect (0,0,WINDOW_WIDTH,WINDOW_HEIGHT);
+		drawMap ();
+		
+		for (var i = 0; i < PLAYERS.length; i++) {
+			let bbox = { x:PLAYERS[i].x+16, y:PLAYERS[i].y, width:32, height:64 };
+			
+			if (PLAYERS[i].id == id) {
+				offsetX = PLAYERS[i].x - (WINDOW_WIDTH / 2 - 32);
+				offsetY = PLAYERS[i].y - (WINDOW_HEIGHT / 2 - 32);
+				
+				canvas.drawImage (playerImage, 64 * (Math.floor(PLAYERS[i].animPhase) % 10), 64 * Math.floor (Math.floor(PLAYERS[i].animPhase) / 10), 64, 64, WINDOW_WIDTH / 2 - 32, WINDOW_HEIGHT / 2 - 32, 64, 64);
+			} else
+				canvas.drawImage (playerImage, 64 * (Math.floor(PLAYERS[i].animPhase) % 10), 64 * Math.floor (Math.floor(PLAYERS[i].animPhase) / 10), 64, 64, PLAYERS[i].x - offsetX, PLAYERS[i].y - offsetY, 64, 64);
+
+			canvas.strokeStyle = "red";
+			
+			if (debugMode == true) {
+				canvas.beginPath ();
+				canvas.rect (bbox.x, bbox.y, bbox.width, bbox.height);
+				canvas.rect(Math.floor((self.x + 16 - PLAYERS[i].offsetX) / TILE_SIZE) * TILE_SIZE, Math.floor((self.y + 64 - PLAYERS[i].offsetY) / TILE_SIZE) * TILE_SIZE, 32, 32);
+				canvas.stroke ();
+			}
+		}
+	};
+	
+	requestAnimationFrame (clientLoop);
+	clientLoop ();

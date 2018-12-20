@@ -27,10 +27,11 @@ const MAX_LAYERS = 5;
 const WINDOW_W = 800;
 const WINDOW_H = 600;
 
-let gravity = 8;
-let maxJumpForce = 16;
-let jumpLength = 7;
+let gravity = 500;
+let maxJumpForce = 650;
+let jumpLength = 6;
 let canJump = true;
+let maxSpeed = 340;
 
 let animStates = { "idle":1, "walking":2, "jumping":3 };
 let tileSets = new Array ();
@@ -40,6 +41,13 @@ map[0] = new Array ();
 map[0][0] = new Array ();
 
 let startPos = { x:0, y:0 };
+
+let targetFPS = 60;
+let tickLength = 1000/targetFPS;
+let previousTick = Date.now ();
+let actualTicks = 0;
+
+let freeIds = new Array ();
 
 function Point (x, y) {
 	this.x = x;
@@ -181,6 +189,31 @@ function tileCollider (x, y) {
 
 loadMap ("file://" + __dirname + "/map.txt");
 
+let BulletList = {};
+
+let Bullet = function (x, y, direction) {
+	let self = {
+		x:x,
+		y:y,
+		width:32,
+		height:32,
+		direction:direction
+	};
+	
+	self.collisions = () => {
+		for (let i in PLAYERS) {
+			if (i.x + 48 > self.x && i.x < self.x + self.width &&
+				i.y + 64 > self.y && i.y < self.x + self.height) {
+					i.x = startPos.x;
+					i.y = startPos.y;
+					return true;
+				}
+				
+		}
+		return false;
+	}
+};
+
 let Player = function (id) {
 	let self = {
 		x:startPos.x,
@@ -193,7 +226,8 @@ let Player = function (id) {
 		pressingRight:false,
 		pressingUp:false,
 		pressingDown:false,
-		maxSpeed:5,
+		pressingAttack:false,
+		maxSpeed:maxSpeed,
 		currentAnimState:animStates.idle,
 		animPhase:0,
 		jumpForce:0,
@@ -207,24 +241,23 @@ let Player = function (id) {
 		doubleJump:false
 	};
 	
-	self.updatePosition = () => {
+	self.updatePosition = (delta) => {
 		self.oldX = self.x;
 		self.oldY = self.y;
 		
 		if (self.currentAnimState != animStates.jumping)
 			self.currentAnimState = animStates.idle;
 		
-		
 		if (self.pressingLeft){
 			self.facingLeft = true;
-			self.x-=self.maxSpeed;
+			self.x-=Math.floor(self.maxSpeed * delta);
 			
 			if (self.currentAnimState != animStates.jumping) 
 				self.currentAnimState = animStates.walking;
 		}
 		if (self.pressingRight) {
 			self.facingLeft = false;
-			self.x+=self.maxSpeed;
+			self.x+=Math.floor(self.maxSpeed * delta);
 			
 			if (self.currentAnimState != animStates.jumping) 
 				self.currentAnimState = animStates.walking;
@@ -239,24 +272,26 @@ let Player = function (id) {
 		
 		if (self.currentAnimState == animStates.jumping) {
 			self.yVel = self.jumpForce * -1;
-			self.jumpForce -= 1;
+			self.jumpForce -= 30;
 			self.jumpCounter--;
 			if (self.jumpForce <= 1 || !self.pressingSpace && self.jumpCounter > 50)
 				self.currentAnimState = animStates.idle;
 		} else {
 			if (self.yVel < gravity && !self.grounded)
 				self.yVel += gravity;
+			if (self.yVel > gravity)
+				self.yVel = gravity;
 			if (self.yVel < 0 && self.grounded)
 				self.yVel = 0;
 		}
 		
-		self.y += self.yVel;
+		self.y += Math.floor(self.yVel * delta);
 		
 		if (self.currentAnimState == animStates.walking && !self.facingLeft) 
-			self.animPhase = (self.animPhase + 0.3) % 6;
+			self.animPhase = (self.animPhase + 10 * delta) % 6;
 		
 		if (self.currentAnimState == animStates.walking && self.facingLeft) {
-			self.animPhase += 0.3;
+			self.animPhase += 10 * delta;
 			if (self.animPhase < 20)
 				self.animPhase = 20;
 			if (self.animPhase > 25)
@@ -277,6 +312,10 @@ let Player = function (id) {
 		
 		if (!self.grounded)
 			self.animPhase = 7;
+	};
+	
+	self.processAttacks = (delta) => {
+		
 	};
 	
 	self.checkCollisions = () => {
@@ -348,6 +387,15 @@ let Player = function (id) {
 
 io.on ('connection', (client)=> { 
 	client.userid = Math.random ();
+
+	if (freeIds.length == 0)
+		client.userid = numClients;
+	else {
+		let pos = freeIds.indexOf (Math.min.apply (Math, freeIds));
+		client.userid = freeIds[pos];
+		freeIds.splice (pos, 1);
+	}
+		
 	console.log ('client[' + client.userid + '] connected.');
 	CLIENTS[client.userid] = client;
 	
@@ -390,10 +438,13 @@ io.on ('connection', (client)=> {
 				PLAYERS[client.userid].canJump = true;
 			}
 		}
+		if (event.inputId == 'fire')
+			PLAYERS[client.userid].pressingAttack = event.state;
 	});
 	
 	client.on ('disconnect', () => { 
 		console.log ("client [" + client.userid +"] disconnected."); 
+		freeIds.push (client.userid);
 		delete CLIENTS[client.userid];
 		delete PLAYERS[client.userid];
 		numClients--;
@@ -403,12 +454,51 @@ io.on ('connection', (client)=> {
 server.on("error", (err)=>{console.log ("Server error: ", err);})
 server.listen (process.env.PORT || 8080, ()=> {console.log ("Server started on Port 8080");});
 
+
+let serverLoop = () => {
+	let now = Date.now ();
+	actualTicks++;
+	
+	if (previousTick + tickLength <= now) {
+		let delta = (now - previousTick) / 1000;
+		previousTick = now;
+		
+		update (delta);
+		actualTicks = 0;
+	}
+	
+	if (Date.now() - previousTick < tickLength - 16) {
+	    setTimeout(serverLoop);
+	} else {
+		setImmediate(serverLoop);
+	}
+}
+
+let update = (delta) => {
+	let pack = [];
+	for (let i in PLAYERS) {
+		let player = PLAYERS[i];
+		player.updatePosition (delta);
+		player.checkCollisions ();
+		player.processAttacks (delta);
+		pack.push ( { x:player.x, y:player.y, animPhase:player.animPhase, id:player.id } );
+	}
+	
+	for (let e in CLIENTS) {
+		let client = CLIENTS[e];
+		client.emit ('position', pack);
+	}
+};
+
+serverLoop ();
+/*
 setInterval (() => {
 	let pack = [];
 	for (let i in PLAYERS) {
 		let player = PLAYERS[i];
 		player.updatePosition ();
 		player.checkCollisions ();
+		player.processAttacks ();
 		pack.push ( { x:player.x, y:player.y, number:player.number, animPhase:player.animPhase, id:player.id } );
 	}
 	
@@ -416,4 +506,4 @@ setInterval (() => {
 		let client = CLIENTS[e];
 		client.emit ('position', pack);
 	}
-}, 1000/60);
+}, 1000/60);*/
