@@ -481,7 +481,7 @@ let update = (delta) => {
 		player.updatePosition (delta);
 		player.checkCollisions ();
 		player.processAttacks (delta);
-		pack.push ( { x:player.x, y:player.y, animPhase:player.animPhase, id:player.id } );
+		pack.push ( { x:player.x, y:player.y, animPhase:player.animPhase, id:player.id, grounded:player.grounded, oldX:player.oldX, oldY:player.oldY } );
 	}
 	
 	for (let e in CLIENTS) {
@@ -491,19 +491,3 @@ let update = (delta) => {
 };
 
 serverLoop ();
-/*
-setInterval (() => {
-	let pack = [];
-	for (let i in PLAYERS) {
-		let player = PLAYERS[i];
-		player.updatePosition ();
-		player.checkCollisions ();
-		player.processAttacks ();
-		pack.push ( { x:player.x, y:player.y, number:player.number, animPhase:player.animPhase, id:player.id } );
-	}
-	
-	for (let e in CLIENTS) {
-		let client = CLIENTS[e];
-		client.emit ('position', pack);
-	}
-}, 1000/60);*/

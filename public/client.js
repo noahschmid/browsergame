@@ -42,6 +42,8 @@
 	let velX = 0;
 	let velY = 0;
 	
+	let localPlayer = {};
+	
 	function timestamp() {
 	  return window.performance && window.performance.now ? window.performance.now() : new Date().getTime();
 	}
@@ -52,6 +54,117 @@
 			document.getElementById ("debugMode").innerHTML = "Debug ON";
 		else
 			document.getElementById ("debugMode").innerHTML = "Debug OFF";
+	};
+	
+	function Point (x, y) {
+		this.x = x;
+		this.y = y;
+	};
+
+	function orientation (p1, p2, p3) {
+		let val = (p2.y - p1.y) * (p3.x - p2.x) - (p2.x - p1.x) * (p3.y - p2.y);
+	
+		if (val == 0)
+			return 0;
+	
+		return (val > 0) ? 1 : 2;
+	}
+
+	function onSegment (p1, p2, p3) {
+		if (p2.x <= Math.max(p1.x, p3.x) && p2.x >= Math.min (p1.x, p3.x) &&
+			p2.y <= Math.max(p1.y, p3.y) && p2.y >= Math.min (p1.y, p3.y))
+			return true;
+	
+		return false;
+	}
+
+	function linesIntersect (p1, q1, p2, q2) {
+		let orientation1 = orientation(p1, q1, p2);
+		let orientation2 = orientation(p1, q1, q2);
+		let orientation3 = orientation(p2, q2, p1);
+		let orientation4 = orientation(p2, q2, q1);
+	
+		if (orientation1 != orientation2 && orientation3 != orientation4)
+			return true;
+	
+		if (orientation1 == 0 && onSegment (p1, p2, q1)) return true;
+	
+		if (orientation2 == 0 && onSegment (p1, q2, q1)) return true;
+	
+		if (orientation3 == 0 && onSegment (p2, p1, q2)) return true;
+	
+		if (orientation4 == 0 && onSegment (p2, q1, q2)) return true;
+	
+		return false;
+	}
+	
+	function tileCollider (x, y) {
+		if (map[y+1][x][0] == 1)
+			return true;
+		return false;
+	}
+	
+	checkCollisions = () => {
+			let bbox = { x:localPlayer.x+16, y:localPlayer.y, width:32, height:64 };
+			
+			let relX = 0, relY = 0;
+			
+			localPlayer.grounded = false;
+
+			for (let sy = 1; sy < mapHeight; sy++) {
+				for (let sx = 0; sx < mapWidth; sx++) {
+					if (tileCollider (sx, sy-1)) {
+						relX = sx * TILE_SIZE; // + self.offsetX;
+						relY = (sy) * TILE_SIZE; // + self.offsetY;
+					
+						if ((sy + 1) == Math.floor ((localPlayer.y + 64) / TILE_SIZE) + 1 && sx == Math.floor ((localPlayer.x + 16) / TILE_SIZE) && tileCollider (sx,sy - 1))
+							localPlayer.grounded = true;
+					
+						if ((sy + 1) == Math.floor ((localPlayer.y + 64) / TILE_SIZE) + 1 && sx == Math.floor ((localPlayer.x + 48) / TILE_SIZE) && tileCollider (sx,sy - 1))
+							localPlayer.grounded = true;
+					
+						let topLeft = new Point (relX, relY);
+						let topRight = new Point (relX + TILE_SIZE, relY);
+						let bottomLeft = new Point (relX, relY + TILE_SIZE);
+						let bottomRight =  new Point (relX + TILE_SIZE, relY + TILE_SIZE);
+					
+						let lastPointTL = new Point (localPlayer.oldX + 16, localPlayer.oldY);
+						let lastPointTR = new Point (localPlayer.oldX + 48, localPlayer.oldY);
+						let lastPointML = new Point (localPlayer.oldX + 16, localPlayer.oldY + 32);
+						let lastPointMR = new Point (localPlayer.oldX + 48, localPlayer.oldY + 32);
+						let lastPointBL = new Point (localPlayer.oldX + 16, localPlayer.oldY + 64);
+						let lastPointBR = new Point (localPlayer.oldX + 48, localPlayer.oldY + 64);
+						
+						let newPointTL = new Point (localPlayer.x + 16, localPlayer.y);
+						let newPointTR = new Point (localPlayer.x + 48, localPlayer.y);
+						let newPointML = new Point (localPlayer.x + 16, localPlayer.y + 32);
+						let newPointMR = new Point (localPlayer.x + 48, localPlayer.y + 32);
+						let newPointBL = new Point (localPlayer.x + 16, localPlayer.y + 64);
+						let newPointBR = new Point (localPlayer.x + 48, localPlayer.y + 64);
+						
+						if (bbox.x < relX + TILE_SIZE && bbox.x + bbox.width > relX &&
+							bbox.y < relY + TILE_SIZE && bbox.y + bbox.height > relY) {
+								if ((linesIntersect (topLeft, topRight, lastPointBL, newPointBL) ||  //bottom
+									linesIntersect (topLeft, topRight, lastPointBR, newPointBR)) && self.grounded) {
+									localPlayer.y = (sy - 1) * TILE_SIZE - 32; // + self.offsetY;
+								} else if ( linesIntersect (topRight, bottomRight, lastPointTL, newPointTL) ||  //left
+											linesIntersect (topRight, bottomRight, lastPointBL, newPointBL) || 
+											linesIntersect (topRight, bottomRight, lastPointML, newPointML)) {
+										localPlayer.x = (sx + 1) * TILE_SIZE - 16; //+ self.offsetX - 16;
+								} else if ( linesIntersect (topLeft, bottomLeft, lastPointTR, newPointTR) ||  //right
+										 	linesIntersect (topLeft, bottomLeft, lastPointBR, newPointBR) || 
+											linesIntersect (topLeft, bottomLeft, lastPointMR, newPointMR)) {
+										localPlayer.x = (sx) * TILE_SIZE - 48;// + self.offsetX - 48;
+								} else if ( linesIntersect (bottomLeft, bottomRight, lastPointTL, newPointTL) || //top
+											linesIntersect (bottomLeft, bottomRight, lastPointTR, newPointTR)) {
+									localPlayer.y = (sy + 1) * TILE_SIZE; // + self.offsetY;
+									if (localPlayer.currentAnimState == animStates.jumping)
+										localPlayer.currentAnimState = animStates.idle;
+								}
+						}
+					}
+				}
+			}
 	};
 
 	function loadTileSet (filename) {
@@ -145,8 +258,10 @@
 	});
 	
 	sock.on ('position', function (data) {
-		
 		PLAYERS = data;
+		for (var i = 0; i < data.length; i++) 
+			if (data[i].id == id)
+				localPlayer = data[i];
 		/*
 		canvas.clearRect (0,0,WINDOW_WIDTH,WINDOW_HEIGHT);
 		
@@ -216,29 +331,31 @@
 	
 	
 	function clientLoop () {
-		now = timestamp ();
-		dt = (now - last) / 1000;
+		if (localPlayer != null) {
+			now = timestamp ();
+			dt = (now - last) / 1000;
 		
-		while (dt > step) {
-			dt = dt - step;
-			update (step);
+			while (dt > step) {
+				dt = dt - step;
+				update (step);
+			}
+		
+			render (dt);
 		}
-		
-		render (dt);
-		
 		requestAnimationFrame (clientLoop);
 	}
 	
 	let update = function (delta) {
-		for (var i = 0; i < PLAYERS.length; i++) {
-			if (PLAYERS[i].id == id) {
-				PLAYERS[i].x += Math.floor (velX * delta);
-				PLAYERS[i].y += Math.floor (velY * delta);
-				
-				velX = 0;
-				velY = 0;
-			}
-		}
+		localPlayer.x += Math.floor (velX * delta);
+		localPlayer.y += Math.floor (velY * delta);
+		
+		//checkCollisions ();
+		
+		offsetX = localPlayer.x - (WINDOW_WIDTH / 2 - 32);
+		offsetY = localPlayer.y - (WINDOW_HEIGHT / 2 - 32);
+		
+		velX = 0;
+		velY = 0;
 	};
 	
 	let render = function (delta) {
@@ -249,10 +366,7 @@
 			let bbox = { x:PLAYERS[i].x+16, y:PLAYERS[i].y, width:32, height:64 };
 			
 			if (PLAYERS[i].id == id) {
-				offsetX = PLAYERS[i].x - (WINDOW_WIDTH / 2 - 32);
-				offsetY = PLAYERS[i].y - (WINDOW_HEIGHT / 2 - 32);
-				
-				canvas.drawImage (playerImage, 64 * (Math.floor(PLAYERS[i].animPhase) % 10), 64 * Math.floor (Math.floor(PLAYERS[i].animPhase) / 10), 64, 64, WINDOW_WIDTH / 2 - 32, WINDOW_HEIGHT / 2 - 32, 64, 64);
+				canvas.drawImage (playerImage, 64 * (Math.floor(localPlayer.animPhase) % 10), 64 * Math.floor (Math.floor(localPlayer.animPhase) / 10), 64, 64, WINDOW_WIDTH / 2 - 32, WINDOW_HEIGHT / 2 - 32, 64, 64);
 			} else
 				canvas.drawImage (playerImage, 64 * (Math.floor(PLAYERS[i].animPhase) % 10), 64 * Math.floor (Math.floor(PLAYERS[i].animPhase) / 10), 64, 64, PLAYERS[i].x - offsetX, PLAYERS[i].y - offsetY, 64, 64);
 
