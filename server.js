@@ -32,6 +32,7 @@ let maxJumpForce = 650;
 let jumpLength = 6;
 let canJump = true;
 let maxSpeed = 340;
+let bulletSpeed = 600;
 
 let animStates = { "idle":1, "walking":2, "jumping":3 };
 let tileSets = new Array ();
@@ -48,6 +49,8 @@ let previousTick = Date.now ();
 let actualTicks = 0;
 
 let freeIds = new Array ();
+
+let BULLETS = [];
 
 function Point (x, y) {
 	this.x = x;
@@ -189,29 +192,36 @@ function tileCollider (x, y) {
 
 loadMap ("file://" + __dirname + "/map.txt");
 
-let BulletList = {};
-
 let Bullet = function (x, y, direction) {
 	let self = {
 		x:x,
 		y:y,
 		width:32,
-		height:32,
+		height:10,
 		direction:direction
 	};
 	
 	self.collisions = () => {
 		for (let i in PLAYERS) {
-			if (i.x + 48 > self.x && i.x < self.x + self.width &&
-				i.y + 64 > self.y && i.y < self.x + self.height) {
-					i.x = startPos.x;
-					i.y = startPos.y;
+			if (PLAYERS[i].x + 48 > self.x && PLAYERS[i].x + 16 < self.x + self.width &&
+				PLAYERS[i].y + 64 > self.y && PLAYERS[i].y < self.y + self.height) {
+					PLAYERS[i].x = startPos.x;
+					PLAYERS[i].y = startPos.y;
 					return true;
 				}
-				
 		}
 		return false;
-	}
+	};
+	
+	self.update = (delta) => {
+		if (direction=="left") {
+			self.x -= bulletSpeed * delta;
+		} else {
+			self.x += bulletSpeed * delta;
+		}
+	};
+	
+	return self;
 };
 
 let Player = function (id) {
@@ -314,8 +324,12 @@ let Player = function (id) {
 			self.animPhase = 7;
 	};
 	
-	self.processAttacks = (delta) => {
-		
+	self.processAttacks = () => {
+		if (self.pressingAttack) {
+			let bullet = new Bullet ((self.facingLeft == true) ? self.x - 16 : self.x + 50, self.y + 15, (self.facingLeft == true) ? "left" : "right");
+			BULLETS.push (bullet);
+			self.pressingAttack = false;
+		}
 	};
 	
 	self.checkCollisions = () => {
@@ -328,13 +342,13 @@ let Player = function (id) {
 			for (let sy = 1; sy < MAP_H; sy++) {
 				for (let sx = 0; sx < MAP_W; sx++) {
 					if (tileCollider (sx, sy-1)) {
-						relX = sx * TILE_SIZE; // + self.offsetX;
-						relY = (sy) * TILE_SIZE; // + self.offsetY;
+						relX = sx * TILE_SIZE;
+						relY = (sy) * TILE_SIZE;
 					
 						if ((sy + 1) == Math.floor ((self.y + 64) / TILE_SIZE) + 1 && sx == Math.floor ((self.x + 16) / TILE_SIZE) && tileCollider (sx,sy - 1))
 							self.grounded = true;
 					
-						if ((sy + 1) == Math.floor ((self.y + 64) / TILE_SIZE) + 1 && sx == Math.floor ((self.x + 48) / TILE_SIZE) && tileCollider (sx,sy - 1))
+						if ((sy + 1) == Math.floor ((self.y + 64) / TILE_SIZE) + 1 && sx == Math.floor ((self.x + 47) / TILE_SIZE) && tileCollider (sx,sy - 1))
 							self.grounded = true;
 					
 						let topLeft = new Point (relX, relY);
@@ -385,7 +399,7 @@ let Player = function (id) {
 	return self;
 };
 
-io.on ('connection', (client)=> { 
+io.on ('connection', (client) => { 
 	client.userid = Math.random ();
 
 	if (freeIds.length == 0)
@@ -396,12 +410,10 @@ io.on ('connection', (client)=> {
 		freeIds.splice (pos, 1);
 	}
 	
-	client.userid = Math.random ();
-	
 	console.log ('client[' + client.userid + '] connected.');
 	CLIENTS[client.userid] = client;
 	
-	var player = Player (client.userid);
+	let player = Player (client.userid);
 	PLAYERS[client.userid] = player;
 	numClients++;
 	client.emit ('message', 'connected to master server.'); 
@@ -418,7 +430,6 @@ io.on ('connection', (client)=> {
 	client.emit ('map', { map:map, tileSize:TILE_SIZE, mapWidth:MAP_W, mapHeight:MAP_H, tileSets:tileSets });
 	client.x = 0;
 	client.y = 0;
-	client.number = "" + Math.floor (10 * Math.random ());
 	
 	client.on ("message", (text) => {
 		console.log ("client wrote: " + text)
@@ -482,30 +493,25 @@ let update = (delta) => {
 		let player = PLAYERS[i];
 		player.updatePosition (delta);
 		player.checkCollisions ();
-		player.processAttacks (delta);
+		player.processAttacks ();
 		pack.push ( { x:player.x, y:player.y, animPhase:player.animPhase, id:player.id, grounded:player.grounded, oldX:player.oldX, oldY:player.oldY } );
+	}
+	
+	for (let b in BULLETS) {
+		let bullet = BULLETS[b];
+		bullet.update (delta);
+		
+		if (bullet.collisions ()) {
+			console.log ("bullet collision");
+			BULLETS.splice (BULLETS.indexOf(bullet), 1);
+		}
 	}
 	
 	for (let e in CLIENTS) {
 		let client = CLIENTS[e];
 		client.emit ('position', pack);
+		client.emit ('bulletList', BULLETS);
 	}
 };
 
 serverLoop ();
-/*
-setInterval (() => {
-	let pack = [];
-	for (let i in PLAYERS) {
-		let player = PLAYERS[i];
-		player.updatePosition ();
-		player.checkCollisions ();
-		player.processAttacks ();
-		pack.push ( { x:player.x, y:player.y, number:player.number, animPhase:player.animPhase, id:player.id } );
-	}
-	
-	for (let e in CLIENTS) {
-		let client = CLIENTS[e];
-		client.emit ('position', pack);
-	}
-}, 1000/60);*/

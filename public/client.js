@@ -43,6 +43,7 @@
 	let velY = 0;
 	
 	let localPlayer = {};
+	let BULLETS = [];
 	
 	function timestamp() {
 	  return window.performance && window.performance.now ? window.performance.now() : new Date().getTime();
@@ -264,6 +265,10 @@
 				localPlayer = data[i];
 	});
 	
+	sock.on ('bulletList', function (bullets) {
+		BULLETS = bullets;
+	});
+	
 	document.onkeydown = function (event) {
 		if (event.keyCode === 68 || event.keyCode == 39) {// d
 			sock.emit ("keyPress", { inputId :'right', state : true });
@@ -285,23 +290,23 @@
 			sock.emit ("keyPress", { inputId : 'space', state : true });
 		}
 		
-		if (event.keyCode == 91) 
+		if (event.keyCode == 18) 
 			sock.emit ("keyPress", { inputId : 'fire', state : true });
 	};
 	
 	document.onkeyup = function (event) {
 		if (event.keyCode === 68 || event.keyCode == 39) // d
-			sock.emit ("keyPress", { inputId :'right', state : false });
+			sock.emit ("keyPress", { inputId :'right', state : false, time:Date.now () });
 		if (event.keyCode === 83) // s
-			sock.emit ("keyPress", { inputId :'down', state : false });
+			sock.emit ("keyPress", { inputId :'down', state : false, time:Date.now () });
 		if (event.keyCode === 65 || event.keyCode == 37) // a
-			sock.emit ("keyPress", { inputId :'left', state : false });
+			sock.emit ("keyPress", { inputId :'left', state : false, time:Date.now ()  });
 		if (event.keyCode === 87) // w
-			sock.emit ("keyPress", { inputId : 'up', state : false });
+			sock.emit ("keyPress", { inputId : 'up', state : false, time:Date.now ()  });
 		if (event.keyCode == 32 || event.keyCode == 38) 
-			sock.emit ("keyPress", { inputId : 'space', state : false });
-		if (event.keyCode == 91) 
-			sock.emit ("keyPress", { inputId : 'fire', state : false });
+			sock.emit ("keyPress", { inputId : 'space', state : false, time:Date.now ()  });
+		if (event.keyCode == 18) 
+			sock.emit ("keyPress", { inputId : 'fire', state : false, time:Date.now ()  });
 	};
 	
 	
@@ -336,25 +341,131 @@
 	let render = function (delta) {
 		canvas.clearRect (0,0,WINDOW_WIDTH,WINDOW_HEIGHT);
 		drawMap ();
+		canvas.font = "18px Georgia";
 		
 		for (var i = 0; i < PLAYERS.length; i++) {
 			let bbox = { x:PLAYERS[i].x+16, y:PLAYERS[i].y, width:32, height:64 };
 			
 			if (PLAYERS[i].id == id) {
+				canvas.textAlign = "center";
+				canvas.fillStyle = "blue";
+				canvas.fillText ("client[" +PLAYERS[i].id + "]", WINDOW_WIDTH / 2 - 32 + 32, WINDOW_HEIGHT / 2 - 32 - 10);
 				canvas.drawImage (playerImage, 64 * (Math.floor(localPlayer.animPhase) % 10), 64 * Math.floor (Math.floor(localPlayer.animPhase) / 10), 64, 64, WINDOW_WIDTH / 2 - 32, WINDOW_HEIGHT / 2 - 32, 64, 64);
-			} else
+			} else {
 				canvas.drawImage (playerImage, 64 * (Math.floor(PLAYERS[i].animPhase) % 10), 64 * Math.floor (Math.floor(PLAYERS[i].animPhase) / 10), 64, 64, PLAYERS[i].x - offsetX, PLAYERS[i].y - offsetY, 64, 64);
-
+				canvas.textAlign = "center";
+				canvas.fillStyle = "red";
+				canvas.fillText ("client[" +PLAYERS[i].id + "]", PLAYERS[i].x  - offsetX + 32, PLAYERS[i].y - offsetY - 10);
+			}
 			canvas.strokeStyle = "red";
 			
 			if (debugMode == true) {
 				canvas.beginPath ();
 				canvas.rect (bbox.x, bbox.y, bbox.width, bbox.height);
-				canvas.rect(Math.floor((self.x + 16 - PLAYERS[i].offsetX) / TILE_SIZE) * TILE_SIZE, Math.floor((self.y + 64 - PLAYERS[i].offsetY) / TILE_SIZE) * TILE_SIZE, 32, 32);
 				canvas.stroke ();
 			}
+		}
+		
+		for (let i = 0; i < BULLETS.length; i++) {
+			canvas.beginPath ();
+			canvas.rect (BULLETS[i].x - offsetX, BULLETS[i].y - offsetY, BULLETS[i].width, BULLETS[i].height);
+			canvas.stroke ();
 		}
 	};
 	
 	requestAnimationFrame (clientLoop);
 	clientLoop ();
+	
+	function recolorEnemy(colorshift) {
+
+	    var imgData = ctx.getImageData(150, 0, canvas.width, canvas.height);
+	    var data = imgData.data;
+
+	    for (var i = 0; i < data.length; i += 4) {
+	        red = data[i + 0];
+	        green = data[i + 1];
+	        blue = data[i + 2];
+	        alpha = data[i + 3];
+
+	        // skip transparent/semiTransparent pixels
+	        if (alpha < 200) {
+	            continue;
+	        }
+
+	        var hsl = rgbToHsl(red, green, blue);
+	        var hue = hsl.h * 360;
+
+	        // change blueish pixels to the new color
+	        if (hue > 200 && hue < 300) {
+	            var newRgb = hslToRgb(hsl.h + colorshift, hsl.s, hsl.l);
+	            data[i + 0] = newRgb.r;
+	            data[i + 1] = newRgb.g;
+	            data[i + 2] = newRgb.b;
+	            data[i + 3] = 255;
+	        }
+	    }
+	    ctx.putImageData(imgData, 150, 0);
+	}
+
+
+	function rgbToHsl(r, g, b) {
+	    r /= 255, g /= 255, b /= 255;
+	    var max = Math.max(r, g, b),
+	        min = Math.min(r, g, b);
+	    var h, s, l = (max + min) / 2;
+
+	    if (max == min) {
+	        h = s = 0; // achromatic
+	    } else {
+	        var d = max - min;
+	        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+	        switch (max) {
+	            case r:
+	                h = (g - b) / d + (g < b ? 6 : 0);
+	                break;
+	            case g:
+	                h = (b - r) / d + 2;
+	                break;
+	            case b:
+	                h = (r - g) / d + 4;
+	                break;
+	        }
+	        h /= 6;
+	    }
+
+	    return ({
+	        h: h,
+	        s: s,
+	        l: l,
+	    });
+	}
+
+
+	function hslToRgb(h, s, l) {
+	    var r, g, b;
+
+	    if (s == 0) {
+	        r = g = b = l; // achromatic
+	    } else {
+	        function hue2rgb(p, q, t) {
+	            if (t < 0) t += 1;
+	            if (t > 1) t -= 1;
+	            if (t < 1 / 6) return p + (q - p) * 6 * t;
+	            if (t < 1 / 2) return q;
+	            if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+	            return p;
+	        }
+
+	        var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+	        var p = 2 * l - q;
+	        r = hue2rgb(p, q, h + 1 / 3);
+	        g = hue2rgb(p, q, h);
+	        b = hue2rgb(p, q, h - 1 / 3);
+	    }
+
+	    return ({
+	        r: Math.round(r * 255),
+	        g: Math.round(g * 255),
+	        b: Math.round(b * 255),
+	    });
+	}
