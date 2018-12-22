@@ -52,6 +52,10 @@ let freeIds = new Array ();
 
 let BULLETS = [];
 
+let snapshots = [];
+
+let playerEvents = [];
+
 function Point (x, y) {
 	this.x = x;
 	this.y = y;
@@ -205,8 +209,7 @@ let Bullet = function (x, y, direction) {
 		for (let i in PLAYERS) {
 			if (PLAYERS[i].x + 48 > self.x && PLAYERS[i].x + 16 < self.x + self.width &&
 				PLAYERS[i].y + 64 > self.y && PLAYERS[i].y < self.y + self.height) {
-					PLAYERS[i].x = startPos.x;
-					PLAYERS[i].y = startPos.y;
+					PLAYERS[i].health -= 20;
 					return true;
 				}
 		}
@@ -248,7 +251,16 @@ let Player = function (id) {
 		scrollX:false,
 		scrollY:false,
 		yVel:0,
-		doubleJump:false
+		doubleJump:false,
+		health:100
+	};
+	
+	self.manageHealth =  () => {
+		if (self.health <= 0) {
+			self.x = startPos.x;
+			self.y = startPos.y;
+			self.health = 100;
+		}
 	};
 	
 	self.updatePosition = (delta) => {
@@ -437,6 +449,7 @@ io.on ('connection', (client) => {
 	});
 	
 	client.on ("keyPress", (event) => {
+		playerEvents.push (event);
 		if (event.inputId == 'right') 
 			PLAYERS[client.userid].pressingRight = event.state;
 		if (event.inputId == 'left')
@@ -467,7 +480,6 @@ io.on ('connection', (client) => {
 server.on("error", (err)=>{console.log ("Server error: ", err);})
 server.listen (process.env.PORT || 8080, ()=> {console.log ("Server started on Port 8080");});
 
-
 let serverLoop = () => {
 	let now = Date.now ();
 	actualTicks++;
@@ -494,7 +506,8 @@ let update = (delta) => {
 		player.updatePosition (delta);
 		player.checkCollisions ();
 		player.processAttacks ();
-		pack.push ( { x:player.x, y:player.y, animPhase:player.animPhase, id:player.id, grounded:player.grounded, oldX:player.oldX, oldY:player.oldY } );
+		player.manageHealth ();
+		pack.push ( { x:player.x, y:player.y, animPhase:player.animPhase, id:player.id, grounded:player.grounded, oldX:player.oldX, oldY:player.oldY, health:player.health } );
 	}
 	
 	for (let b in BULLETS) {
@@ -511,6 +524,11 @@ let update = (delta) => {
 		let client = CLIENTS[e];
 		client.emit ('position', pack);
 		client.emit ('bulletList', BULLETS);
+	}
+	
+	snapshots.push (pack);
+	if (snapshots.length > 60) {
+		snapshots.splice (0, 1);
 	}
 };
 

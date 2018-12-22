@@ -346,6 +346,18 @@
 		for (var i = 0; i < PLAYERS.length; i++) {
 			let bbox = { x:PLAYERS[i].x+16, y:PLAYERS[i].y, width:32, height:64 };
 			
+			canvas.strokeStyle = "red";
+			canvas.fillStyle = "white";
+			canvas.beginPath ();
+			canvas.rect (PLAYERS[i].x - offsetX, PLAYERS[i].y - offsetY - 5, 64, 5);
+			canvas.fillRect (PLAYERS[i].x - offsetX, PLAYERS[i].y - offsetY - 5, 64, 5);
+			canvas.stroke ();
+			
+			canvas.fillStyle = "red";
+			canvas.beginPath ();
+			canvas.fillRect (PLAYERS[i].x - offsetX, PLAYERS[i].y - offsetY - 5, (PLAYERS[i].health / 100) * 64, 5);
+			canvas.stroke ();
+			
 			if (PLAYERS[i].id == id) {
 				canvas.textAlign = "center";
 				canvas.fillStyle = "blue";
@@ -355,11 +367,11 @@
 				canvas.drawImage (playerImage, 64 * (Math.floor(PLAYERS[i].animPhase) % 10), 64 * Math.floor (Math.floor(PLAYERS[i].animPhase) / 10), 64, 64, PLAYERS[i].x - offsetX, PLAYERS[i].y - offsetY, 64, 64);
 				canvas.textAlign = "center";
 				canvas.fillStyle = "red";
-				canvas.fillText ("client[" +PLAYERS[i].id + "]", PLAYERS[i].x  - offsetX + 32, PLAYERS[i].y - offsetY - 10);
+				canvas.fillText ("client[" +PLAYERS[i].id + "] ", PLAYERS[i].x  - offsetX + 32, PLAYERS[i].y - offsetY - 12);
 			}
-			canvas.strokeStyle = "red";
 			
 			if (debugMode == true) {
+				canvas.strokeStyle = "black";
 				canvas.beginPath ();
 				canvas.rect (bbox.x, bbox.y, bbox.width, bbox.height);
 				canvas.stroke ();
@@ -367,8 +379,9 @@
 		}
 		
 		for (let i = 0; i < BULLETS.length; i++) {
+			canvas.strokeStyle = "black";
 			canvas.beginPath ();
-			canvas.rect (BULLETS[i].x - offsetX, BULLETS[i].y - offsetY, BULLETS[i].width, BULLETS[i].height);
+			canvas.fillRect (BULLETS[i].x - offsetX, BULLETS[i].y - offsetY, BULLETS[i].width, BULLETS[i].height);
 			canvas.stroke ();
 		}
 	};
