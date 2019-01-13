@@ -5,9 +5,7 @@ const express = require ('express');
 const socketio = require ('socket.io');
 const UUID = require('node-uuid');
 const app = express ();
-
-const clientPath = __dirname + '/public';
-app.use (express.static (clientPath));
+app.use (express.static ('public'));
 
 app.get ('/', (req, res) => {
 	res.sendFile (clientPath + '/index.html');
@@ -152,7 +150,7 @@ io.on ('connection', (client) => {
 });
 
 server.on("error", (err)=>{console.log ("Server error: ", err);})
-server.listen (process.env.PORT || 8080, ()=> {console.log ("Server started on Port 8080");});
+server.listen (process.env.PORT || 8080, ()=> {console.log ("Server started on Port " + (process.env.PORT || 8080));});
 
 let serverLoop = () => {
 	let now = Date.now ();
@@ -182,7 +180,7 @@ let update = (delta) => {
 		player.processAttacks ();
 		player.manageHealth ();*/
 		pack.push ( { id:player.playerId, x:player.position.x, y:player.position.y, animPhase:player.animPhase, 
-		collisionBlocksX:player.collisionBlocksX, collisionBlocksY:player.collisionBlocksY, facingLeft:player.facingLeft, health:player.health } );
+		collisionBlocksX:player.collisionBlocksX, collisionBlocksY:player.collisionBlocksY, facingLeft:player.facingLeft, health:player.health, points:0 } );
 	}
 	
 	for (let b in BULLETS) {
