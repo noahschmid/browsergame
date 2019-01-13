@@ -22,7 +22,6 @@
 	var numTilesInSet = {};
 	
 	var offsetX = 0, offsetY = 0;
-	var map = {};
 	
 	var WINDOW_WIDTH = 800;
 	var WINDOW_HEIGHT = 600;
@@ -44,6 +43,7 @@
 	
 	let localPlayer = {};
 	let BULLETS = [];
+	let snapshots = [];
 	
 	function timestamp() {
 	  return window.performance && window.performance.now ? window.performance.now() : new Date().getTime();
@@ -57,123 +57,14 @@
 			document.getElementById ("debugMode").innerHTML = "Debug OFF";
 	};
 	
-	function Point (x, y) {
-		this.x = x;
-		this.y = y;
-	};
-
-	function orientation (p1, p2, p3) {
-		let val = (p2.y - p1.y) * (p3.x - p2.x) - (p2.x - p1.x) * (p3.y - p2.y);
+	let mainMap = new Map ();
 	
-		if (val == 0)
-			return 0;
-	
-		return (val > 0) ? 1 : 2;
-	}
-
-	function onSegment (p1, p2, p3) {
-		if (p2.x <= Math.max(p1.x, p3.x) && p2.x >= Math.min (p1.x, p3.x) &&
-			p2.y <= Math.max(p1.y, p3.y) && p2.y >= Math.min (p1.y, p3.y))
-			return true;
-	
-		return false;
-	}
-
-	function linesIntersect (p1, q1, p2, q2) {
-		let orientation1 = orientation(p1, q1, p2);
-		let orientation2 = orientation(p1, q1, q2);
-		let orientation3 = orientation(p2, q2, p1);
-		let orientation4 = orientation(p2, q2, q1);
-	
-		if (orientation1 != orientation2 && orientation3 != orientation4)
-			return true;
-	
-		if (orientation1 == 0 && onSegment (p1, p2, q1)) return true;
-	
-		if (orientation2 == 0 && onSegment (p1, q2, q1)) return true;
-	
-		if (orientation3 == 0 && onSegment (p2, p1, q2)) return true;
-	
-		if (orientation4 == 0 && onSegment (p2, q1, q2)) return true;
-	
-		return false;
-	}
-	
-	function tileCollider (x, y) {
-		if (map[y+1][x][0] == 1)
-			return true;
-		return false;
-	}
-	
-	checkCollisions = () => {
-			let bbox = { x:localPlayer.x+16, y:localPlayer.y, width:32, height:64 };
-			
-			let relX = 0, relY = 0;
-			
-			localPlayer.grounded = false;
-
-			for (let sy = 1; sy < mapHeight; sy++) {
-				for (let sx = 0; sx < mapWidth; sx++) {
-					if (tileCollider (sx, sy-1)) {
-						relX = sx * TILE_SIZE; // + self.offsetX;
-						relY = (sy) * TILE_SIZE; // + self.offsetY;
-					
-						if ((sy + 1) == Math.floor ((localPlayer.y + 64) / TILE_SIZE) + 1 && sx == Math.floor ((localPlayer.x + 16) / TILE_SIZE) && tileCollider (sx,sy - 1))
-							localPlayer.grounded = true;
-					
-						if ((sy + 1) == Math.floor ((localPlayer.y + 64) / TILE_SIZE) + 1 && sx == Math.floor ((localPlayer.x + 48) / TILE_SIZE) && tileCollider (sx,sy - 1))
-							localPlayer.grounded = true;
-					
-						let topLeft = new Point (relX, relY);
-						let topRight = new Point (relX + TILE_SIZE, relY);
-						let bottomLeft = new Point (relX, relY + TILE_SIZE);
-						let bottomRight =  new Point (relX + TILE_SIZE, relY + TILE_SIZE);
-					
-						let lastPointTL = new Point (localPlayer.oldX + 16, localPlayer.oldY);
-						let lastPointTR = new Point (localPlayer.oldX + 48, localPlayer.oldY);
-						let lastPointML = new Point (localPlayer.oldX + 16, localPlayer.oldY + 32);
-						let lastPointMR = new Point (localPlayer.oldX + 48, localPlayer.oldY + 32);
-						let lastPointBL = new Point (localPlayer.oldX + 16, localPlayer.oldY + 64);
-						let lastPointBR = new Point (localPlayer.oldX + 48, localPlayer.oldY + 64);
-						
-						let newPointTL = new Point (localPlayer.x + 16, localPlayer.y);
-						let newPointTR = new Point (localPlayer.x + 48, localPlayer.y);
-						let newPointML = new Point (localPlayer.x + 16, localPlayer.y + 32);
-						let newPointMR = new Point (localPlayer.x + 48, localPlayer.y + 32);
-						let newPointBL = new Point (localPlayer.x + 16, localPlayer.y + 64);
-						let newPointBR = new Point (localPlayer.x + 48, localPlayer.y + 64);
-						
-						if (bbox.x < relX + TILE_SIZE && bbox.x + bbox.width > relX &&
-							bbox.y < relY + TILE_SIZE && bbox.y + bbox.height > relY) {
-								if ((linesIntersect (topLeft, topRight, lastPointBL, newPointBL) ||  //bottom
-									linesIntersect (topLeft, topRight, lastPointBR, newPointBR)) && self.grounded) {
-									localPlayer.y = (sy - 1) * TILE_SIZE - 32; // + self.offsetY;
-								} else if ( linesIntersect (topRight, bottomRight, lastPointTL, newPointTL) ||  //left
-											linesIntersect (topRight, bottomRight, lastPointBL, newPointBL) || 
-											linesIntersect (topRight, bottomRight, lastPointML, newPointML)) {
-										localPlayer.x = (sx + 1) * TILE_SIZE - 16; //+ self.offsetX - 16;
-								} else if ( linesIntersect (topLeft, bottomLeft, lastPointTR, newPointTR) ||  //right
-										 	linesIntersect (topLeft, bottomLeft, lastPointBR, newPointBR) || 
-											linesIntersect (topLeft, bottomLeft, lastPointMR, newPointMR)) {
-										localPlayer.x = (sx) * TILE_SIZE - 48;// + self.offsetX - 48;
-								} else if ( linesIntersect (bottomLeft, bottomRight, lastPointTL, newPointTL) || //top
-											linesIntersect (bottomLeft, bottomRight, lastPointTR, newPointTR)) {
-									localPlayer.y = (sy + 1) * TILE_SIZE; // + self.offsetY;
-									if (localPlayer.currentAnimState == animStates.jumping)
-										localPlayer.currentAnimState = animStates.idle;
-								}
-						}
-					}
-				}
-			}
-	};
-
 	function loadTileSet (filename) {
 			tileSet[tileSetsLoaded] = new Image ();
 			tileSet[tileSetsLoaded].onload = function () {
-				if (tileSet[tileSetsLoaded].naturalWidth % TILE_SIZE == 0 && tileSet[tileSetsLoaded].naturalWidth % TILE_SIZE == 0){
+				if (tileSet[tileSetsLoaded].naturalWidth % mainMap.tileSize == 0 && tileSet[tileSetsLoaded].naturalWidth % mainMap.tileSize == 0){
 					console.log ("correct dimensions");
-					numTilesInSet[tileSetsLoaded] = parseInt ((tileSet[tileSetsLoaded].naturalWidth / TILE_SIZE)) * parseInt ((tileSet[tileSetsLoaded].naturalHeight / TILE_SIZE));
+					numTilesInSet[tileSetsLoaded] = parseInt ((tileSet[tileSetsLoaded].naturalWidth / mainMap.tileSize)) * parseInt ((tileSet[tileSetsLoaded].naturalHeight / mainMap.tileSize));
 					totalTiles += numTilesInSet[tileSetsLoaded];
 					console.log ("tiles in set: " + numTilesInSet [tileSetsLoaded]);
 					tileSetsLoaded ++;
@@ -199,7 +90,7 @@
 				tileInSet++;
 		}
 
-		var tilesX = parseInt(tileSet[tileSetId].naturalWidth / TILE_SIZE);
+		var tilesX = parseInt(tileSet[tileSetId].naturalWidth / mainMap.tileSize);
 		var inX = tileInSet % tilesX;
 		var inY = parseInt(tileInSet / tilesX);
 		inY++;
@@ -212,9 +103,9 @@
 		// sx sy swidth sheight x y width height
 		
 		if (useOffset)
-			canvas.drawImage (tileSet[tileSetId], TILE_SIZE * (inX - 1), TILE_SIZE * (inY - 1), TILE_SIZE, TILE_SIZE, x - offsetX, y - offsetY, TILE_SIZE, TILE_SIZE);
+			canvas.drawImage (tileSet[tileSetId], mainMap.tileSize * (inX - 1), mainMap.tileSize * (inY - 1), mainMap.tileSize, mainMap.tileSize, x - offsetX, y - offsetY, mainMap.tileSize, mainMap.tileSize);
 		else
-			canvas.drawImage (tileSet[tileSetId], TILE_SIZE * (inX - 1), TILE_SIZE * (inY - 1), TILE_SIZE, TILE_SIZE, x, y, TILE_SIZE, TILE_SIZE);
+			canvas.drawImage (tileSet[tileSetId], mainMap.tileSize * (inX - 1), mainMap.tileSize * (inY - 1), mainMap.tileSize, mainMap.tileSize, x, y, mainMap.tileSize, mainMap.tileSize);
 	}
 	sock.on ('dimensions', function (dim) {
 		document.getElementById ('canvas').width = dim.width;
@@ -226,10 +117,10 @@
 	
 	function drawMap () {
 		for (var l = 1; l < 5; l++) {
-			for (var y = 1; y < parseInt (mapWidth); y ++){
-				for (var x = 0; x < parseInt (mapHeight); x++) {
-					if (map[y][x][l] != 0 && x * TILE_SIZE - offsetX < WINDOW_WIDTH && y * TILE_SIZE - offsetY < WINDOW_HEIGHT) {
-						drawTile (map[y][x][l], x * TILE_SIZE, y * TILE_SIZE, true);
+			for (var y = 0; y < mainMap.mapWidth; y ++){
+				for (var x = 0; x < mainMap.mapHeight; x++) {
+					if (mainMap.map[l][x][y] != 0 && x * mainMap.tileSize - offsetX < WINDOW_WIDTH && y * mainMap.tileSize - offsetY < WINDOW_HEIGHT) {
+						drawTile (mainMap.map[l][x][y], x * mainMap.tileSize, y * mainMap.tileSize, true);
 					}
 				}
 			}
@@ -243,22 +134,16 @@
 	
 	sock.on ('map', function (data) {
 
-		map = data.map;
-		console.log ("received map with size " + (data.map.length - 1) + "x" + data.map[1].length);
-		mapWidth = data.mapWidth;
-		mapHeight = data.mapHeight;
-		TILE_SIZE = data.tileSize;
+		mainMap = data
+		console.log ("received map with size " + (mainMap.map[0].length) + "x" + mainMap.map[0][0].length);
 		
-		for (let i = 0; i < data.tileSets.length; i++)
-			loadTileSet (data.tileSets[i]);
-		
-		for (let i = 0; i < tileSet.length; i++)
-			console.log ("tileset: " + tileSet[i]);
+		for (let i = 0; i < mainMap.tileSets.length; i++)
+			loadTileSet (mainMap.tileSets[i]);
 			
 		offsetX = 0;
 	});
 	
-	sock.on ('position', function (data) {
+	sock.on ('update', function (data) {
 		PLAYERS = data;
 		for (var i = 0; i < data.length; i++) 
 			if (data[i].id == id)
@@ -326,13 +211,15 @@
 	}
 	
 	let update = function (delta) {
-		localPlayer.x += Math.floor (velX * delta);
-		localPlayer.y += Math.floor (velY * delta);
+		//localPlayer.x += Math.floor (velX * delta);
+		//localPlayer.y += Math.floor (velY * delta);
 		
 		//checkCollisions ();
 		
-		offsetX = localPlayer.x - (WINDOW_WIDTH / 2 - 32);
-		offsetY = localPlayer.y - (WINDOW_HEIGHT / 2 - 32);
+		if (localPlayer.y < mainMap.mapHeight * mainMap.tileSize) {
+			offsetX = localPlayer.x - (WINDOW_WIDTH / 2 - 32);
+			offsetY = localPlayer.y - (WINDOW_HEIGHT / 2 - 32);
+		}
 		
 		velX = 0;
 		velY = 0;
@@ -342,7 +229,6 @@
 		canvas.clearRect (0,0,WINDOW_WIDTH,WINDOW_HEIGHT);
 		drawMap ();
 		canvas.font = "18px Georgia";
-		
 		for (var i = 0; i < PLAYERS.length; i++) {
 			let bbox = { x:PLAYERS[i].x+16, y:PLAYERS[i].y, width:32, height:64 };
 			
@@ -358,31 +244,64 @@
 			canvas.fillRect (PLAYERS[i].x - offsetX, PLAYERS[i].y - offsetY - 5, (PLAYERS[i].health / 100) * 64, 5);
 			canvas.stroke ();
 			
+			const buffer = document.createElement('canvas');
+			buffer.width = 64;
+			buffer.height = 64;
+			const context = buffer.getContext('2d');
+			
+			if (PLAYERS[i].facingLeft) {
+				context.scale (-1, 1);
+				context.translate (-64, 0);
+			}
+			context.drawImage (playerImage, 64 * (Math.floor(PLAYERS[i].animPhase) % 10), 64 * Math.floor (Math.floor(PLAYERS[i].animPhase) / 10), 64, 64, 0, 0, 64, 64);
+			canvas.drawImage (buffer, PLAYERS[i].x - offsetX, PLAYERS[i].y - offsetY, 64, 64);
+			
 			if (PLAYERS[i].id == id) {
 				canvas.textAlign = "center";
 				canvas.fillStyle = "blue";
-				canvas.fillText ("client[" +PLAYERS[i].id + "]", WINDOW_WIDTH / 2 - 32 + 32, WINDOW_HEIGHT / 2 - 32 - 10);
-				canvas.drawImage (playerImage, 64 * (Math.floor(localPlayer.animPhase) % 10), 64 * Math.floor (Math.floor(localPlayer.animPhase) / 10), 64, 64, WINDOW_WIDTH / 2 - 32, WINDOW_HEIGHT / 2 - 32, 64, 64);
+				canvas.fillText ("client[" +PLAYERS[i].id + "]", localPlayer.x - offsetX + 32, localPlayer.y - offsetY - 10);
+				
+				canvas.fillText ("points: " + localPlayer.points, WINDOW_WIDTH - 50, 15);
+				canvas.fillText ("points: " + localPlayer.points, WINDOW_WIDTH - 50, 15);
 			} else {
-				canvas.drawImage (playerImage, 64 * (Math.floor(PLAYERS[i].animPhase) % 10), 64 * Math.floor (Math.floor(PLAYERS[i].animPhase) / 10), 64, 64, PLAYERS[i].x - offsetX, PLAYERS[i].y - offsetY, 64, 64);
 				canvas.textAlign = "center";
 				canvas.fillStyle = "red";
 				canvas.fillText ("client[" +PLAYERS[i].id + "] ", PLAYERS[i].x  - offsetX + 32, PLAYERS[i].y - offsetY - 12);
-			}
-			
-			if (debugMode == true) {
-				canvas.strokeStyle = "black";
-				canvas.beginPath ();
-				canvas.rect (bbox.x, bbox.y, bbox.width, bbox.height);
-				canvas.stroke ();
 			}
 		}
 		
 		for (let i = 0; i < BULLETS.length; i++) {
 			canvas.strokeStyle = "black";
+			canvas.fillStyle = "black";
 			canvas.beginPath ();
 			canvas.fillRect (BULLETS[i].x - offsetX, BULLETS[i].y - offsetY, BULLETS[i].width, BULLETS[i].height);
 			canvas.stroke ();
+		}
+		
+		if (debugMode) {
+			for (let i in localPlayer.collisionBlocksX) {
+				let block1 = localPlayer.collisionBlocksX[i];
+				
+				if (block1.type == 55)
+					canvas.strokeStyle = "red";
+				else
+					canvas.strokeStyle = "blue";
+				canvas.beginPath ();
+				canvas.rect (block1.left - offsetX, block1.top - offsetY, 32, 32);
+				canvas.stroke ();
+			}
+			
+			for (let a in localPlayer.collisionBlocksY) {
+				let block2 = localPlayer.collisionBlocksY[a];
+				
+				if (block2.type == 55)
+					canvas.strokeStyle = "red";
+				else
+					canvas.strokeStyle = "blue";
+				canvas.beginPath ();
+				canvas.rect (block2.left - offsetX, block2.top - offsetY, 32, 32);
+				canvas.stroke ();
+			}
 		}
 	};
 	
