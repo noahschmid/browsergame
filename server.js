@@ -1,5 +1,5 @@
 "use strict";
-
+console.log ("startup");
 const http = require ('http');
 const express = require ('express');
 const socketio = require ('socket.io');
