@@ -46,7 +46,7 @@ let snapshots = [];
 
 let playerEvents = [];
 
-let Map = require ("./public/Map");
+let Map = require ("./public/map.js");
 
 let mainMap = new Map ();
 
