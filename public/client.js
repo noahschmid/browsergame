@@ -239,8 +239,7 @@ let Client = function(context, w, h) {
 		};
 		
 		Client.prototype.onPing = function(data) {
-			console.log (parseFloat(data));
-			this.netPing = new Date().getTime () - parseFloat(data);
+			this.netPing = Math.round((new Date().getTime () - parseFloat(data)) * 100) / 100;
 			this.netLatency = this.netPing/2;
 		};
 
