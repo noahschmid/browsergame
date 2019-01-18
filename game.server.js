@@ -95,8 +95,8 @@ Server.prototype.startListening = function(binder) {
 			}
 		}.bind(binder));
 		
-		client.on('ping', function(data) {
-			client.emit ('ping', { time:data.time });
+		client.on('p', function(data) {
+			client.emit ('p', data);
 		});
 	
 		client.on('disconnect', function () { 

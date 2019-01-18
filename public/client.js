@@ -135,7 +135,7 @@ let Client = function(context, w, h) {
 	};
 	
 	Client.prototype.onPing = function(data) {
-		this.netPing = Math.round((Date.now() - data.time) * 100) / 100;
+		this.netPing = (new Date().getTime() - data);
 		this.netLatency = this.netPing/2;
 	};
 	
@@ -172,7 +172,7 @@ let Client = function(context, w, h) {
 
 	        this.socket.on('message', this.onNetMessage.bind(this));
 			
-			this.socket.on('ping', this.onPing.bind(this));
+			this.socket.on('p', this.onPing.bind(this));
 			
 			this.socket.on('onplayerjoined', this.onPlayerJoined.bind(this));
 			
@@ -219,7 +219,7 @@ let Client = function(context, w, h) {
 		this.context.textAlign = "left";
 		this.context.font = "13px Arial";
 		this.context.textBaseLine = "middle";
-		this.context.fillText("ping: " + this.netPing, this.debugButton.x, this.debugButton.y + this.debugButton.h + 15);
+		this.context.fillText("ping: " + this.netPing + "ms", this.debugButton.x, this.debugButton.y + this.debugButton.h + 15);
 		
 		for (let i in this.messages) {
 			this.context.fillText(this.messages[i], this.debugButton.x, this.debugButton.y + this.debugButton.h + 30 + 15 * i);
@@ -309,8 +309,8 @@ let Client = function(context, w, h) {
 		
 		Client.prototype.startPingTimer = function() {
 			setInterval(function() {
-				this.lastPingTime = Date.now();
-				this.socket.emit('ping', { time:this.lastPingTime });
+				this.lastPingTime = new Date().getTime();
+				this.socket.emit('p', this.lastPingTime);
 			}.bind(this), 1000);
 		};
 
