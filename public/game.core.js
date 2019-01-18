@@ -67,13 +67,13 @@ GameCore.prototype.update = function(t) {
         //Store the last frame time
     this.lastFrameTime = t;
 
-    this.mainUpdate(this.deltaTime);
+    this.mainUpdate();
 
         //schedule the next update
     this.updateid = window.requestAnimationFrame( this.update.bind(this), this.viewport );
 };
 
-GameCore.prototype.mainUpdate = function(delta) {
+GameCore.prototype.mainUpdate = function() {
 	
 };
 

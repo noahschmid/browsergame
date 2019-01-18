@@ -259,12 +259,16 @@ if ( 'undefined' != typeof global ) {
 	MapController.prototype.drawMap = function(canvas) {
 		if (typeof this.anchor.x != 'undefined' && typeof this.anchor.y != 'undefined') {
 			let startX = Math.floor((this.anchor.x - this.canvasWidth/2 - 32)/this.tileSize);
-			startX = startX >= this.map[0][0].length ? this.map[0][0].length - 1 : startX;
-			startX = startX < 0 ? 0 : startX;
+		//	startX = startX >= this.map[0][0].length ? this.map[0][0].length - 1 : startX;
+		//	startX = startX < 0 ? 0 : startX;
 		
 			let startY = Math.floor((this.anchor.y - this.canvasHeight/2 - 32)/this.tileSize);
-			startY = startY >= this.map[0].length ? this.map[0].length - 1 : startY;
-			startY = startY < 0 ? 0 : startY;
+			//startY = startY >= this.map[0].length ? this.map[0].length - 1 : startY;
+		//	startY = startY < 0 ? 0 : startY;
+			
+			//if (startY * this.tileSize - this.offsetY > 0)
+				startY = Math.floor(this.offsetY / this.tileSize);
+				startX = Math.floor(this.offsetX / this.tileSize);
 			
 			for (var l = 1; l < 5; l++) {
 				for (var y = startY; y < this.mapWidth; y ++){
@@ -279,11 +283,20 @@ if ( 'undefined' != typeof global ) {
 	}
 	
 	MapController.prototype.update = function(anchor) {
-		this.anchor = anchor;
-		if (this.anchor.y < this.mapHeight * this.tileSize) {
-			this.offsetX = this.anchor.x - (this.canvasWidth / 2 - 32);
-			this.offsetY = this.anchor.y - (this.canvasHeight / 2 - 32);
+		
+		if (anchor.y < this.mapHeight * this.tileSize - this.canvasHeight/2 && anchor.y > this.canvasHeight/2 - 32) {
+			this.offsetY = anchor.y - (this.canvasHeight / 2 - 32);
+			this.anchor = anchor;
 		}
+		if (anchor.x < this.mapWidth * this.tileSize - this.canvasWidth/2 - 32 && anchor.x > this.canvasWidth/2 - 32) {
+			this.offsetX = anchor.x - (this.canvasWidth / 2 - 32);
+			this.anchor = anchor;
+		}
+	}
+	
+	MapController.prototype.resize = function(width, height) {
+		this.canvasWidth = width;
+		this.canvasHeight = height;
 	}
 
 function createArray(length) {

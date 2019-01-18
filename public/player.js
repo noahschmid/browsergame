@@ -43,11 +43,9 @@ let Player = function (id, map){
 		this.animState = animStates.idle;
 		this.animPhase = 10;
 		this.position.x -= LEFT_MARGIN;
-		this.pressingAttack = false;
 		this.map = map;
 		this.grounded = false;
-		this.pressingLeft = false;
-		this.pressingRight = false;
+		this.keyPresses = { left:false, right:false, up:false, down:false, fire:false, jump:false };
 		this.collisionBlocksX = {};
 		this.collisionBlocksY = {};
 		this.facingLeft = false;
@@ -55,6 +53,14 @@ let Player = function (id, map){
 		this.distance = 0;
 		this.jumpsLeft = 0;
 		this.health = 100;
+		this.points = 0;
+		
+        this.old_state = { position:this.lastPosition, velocity:this.velocity };
+        this.cur_state = { position:this.position, velocity:this.velocity };
+        this.state_time = new Date().getTime();
+
+            //Our local history of inputs
+        this.inputs = [];
 };
 
 if ( 'undefined' != typeof global ) {
@@ -72,10 +78,10 @@ if ( 'undefined' != typeof global ) {
 		if (this.currentAnimState != animStates.jumping)
 			this.currentAnimState = animStates.idle;
 		
-		if (this.pressingLeft) {
+		if (this.keyPresses.left) {
 			this.facingLeft = true;
 			this.direction = -1;
-		} else if (this.pressingRight) {
+		} else if (this.keyPresses.right) {
 			this.facingLeft = false;
 			this.direction = 1;
 		} else {
@@ -100,15 +106,19 @@ if ( 'undefined' != typeof global ) {
 		
 		this.testX ();
 		
-		if (this.pressingSpace) {
+		if (this.keyPresses.jump) {
 			if ((this.jumpsLeft == 0 && this.grounded) || this.jumpsLeft == 1) {
-				this.pressingSpace = false;
+				this.keyPresses.jump = false;
 				this.velocity.y = -JUMP_SPEED;
 				this.jumpsLeft = this.jumpsLeft == 0 ? 1 : 0;
 			}
 		}
 		
 		this.velocity.y = this.velocity.y < MAX_GRAVITY ? this.velocity.y + GRAVITY * delta : this.velocity.y;
+		
+		if (Math.floor(this.velocity.y * delta) > this.map.tileSize - 1)
+			this.velocity.y = Math.floor((this.map.tileSize - 1) / delta);
+		
 		this.position.y += Math.floor(this.velocity.y * delta);
 		
 		this.testY ();
@@ -188,6 +198,7 @@ if ( 'undefined' != typeof global ) {
 					this.collisionBlocksY[i].type = 55;
 					this.position.y = tile.top - this.size.y + BOTTOM_MARGIN;
 					this.velocity.y = 0;
+					this.jumpsLeft = 0;
 				} 
 			} else if (this.velocity.y < 0) {
 				if (this.position.y < tile.bottom) {
@@ -218,120 +229,12 @@ if ( 'undefined' != typeof global ) {
 		else if (!this.grounded)
 			this.animPhase = 7;
 	};
-
-/*
-let Player2 = function (id, startPos) {
-	let self = {
-		x:startPos.x,
-		y:startPos.y,
-		oldX:0,
-		oldY:0,
-		id:id,
-		pressingLeft:false,
-		pressingRight:false,
-		pressingUp:false,
-		pressingDown:false,
-		pressingAttack:false,
-		maxSpeed:maxSpeed,
-		currentAnimState:animStates.idle,
-		animPhase:0,
-		jumpForce:0,
-		grounded:false,
-		facingLeft:false,
-		jumpCounter:0,
-		canJump:false,
-		yVel:0,
-		doubleJump:false,
-		health:100,
-		points:0
-	};
 	
-	self.manageHealth =  () => {
-		if (self.health <= 0) {
-			self.x = startPos.x;
-			self.y = startPos.y;
-			self.health = 100;
-		}
+	Player.prototype.setDirection = function (dir) {
+		if (dir == 'left')
+			this.direction = -1;
+		if (dir == 'right')
+			this.direction = 1;
+		else
+			this.direction = 0;
 	};
-	
-	self.updatePosition = (delta) => {
-		self.oldX = self.x;
-		self.oldY = self.y;
-		
-		if (self.currentAnimState != animStates.jumping)
-			self.currentAnimState = animStates.idle;
-		
-		if (self.pressingLeft){
-			self.facingLeft = true;
-			self.x-=Math.floor(self.maxSpeed * delta);
-			
-			if (self.currentAnimState != animStates.jumping) 
-				self.currentAnimState = animStates.walking;
-		}
-		if (self.pressingRight) {
-			self.facingLeft = false;
-			self.x+=Math.floor(self.maxSpeed * delta);
-			
-			if (self.currentAnimState != animStates.jumping) 
-				self.currentAnimState = animStates.walking;
-		}
-		if (self.pressingSpace && (self.grounded || self.doubleJump)){
-			self.currentAnimState = animStates.jumping;
-			self.jumpForce = maxJumpForce;
-			self.jumpCounter = jumpLength;
-			self.canJump = false;
-			self.doubleJump = !self.doubleJump;
-			self.pressingSpace = false;
-		}
-		
-		if (self.currentAnimState == animStates.jumping) {
-			self.yVel = self.jumpForce * -1;
-			self.jumpForce -= 30;
-			self.jumpCounter--;
-			if (self.jumpForce <= 1 || !self.pressingSpace && self.jumpCounter > 50)
-				self.currentAnimState = animStates.idle;
-		} else {
-			if (self.yVel < gravity && !self.grounded)
-				self.yVel += gravity;
-			if (self.yVel > gravity)
-				self.yVel = gravity;
-			if (self.yVel < 0 && self.grounded)
-				self.yVel = 0;
-		}
-		
-		self.y += Math.floor(self.yVel * delta);
-		
-		if (self.currentAnimState == animStates.walking && !self.facingLeft) 
-			self.animPhase = (self.animPhase + 10 * delta) % 6;
-		
-		if (self.currentAnimState == animStates.walking && self.facingLeft) {
-			self.animPhase += 10 * delta;
-			if (self.animPhase < 20)
-				self.animPhase = 20;
-			if (self.animPhase > 25)
-				self.animPhase = 20;
-		}
-		
-		if (self.currentAnimState == animStates.idle && !self.facingLeft && self.grounded)
-			self.animPhase = 10;
-		
-		if (self.currentAnimState == animStates.idle && self.facingLeft && self.grounded)
-			self.animPhase = 26;
-		
-		if ((self.currentAnimState == animStates.jumping || !self.grounded) && !self.facingLeft)
-			self.animPhase = 7;
-		
-		if ((self.currentAnimState == animStates.jumping || !self.grounded) && self.facingLeft)
-			self.animPhase = 7;
-		
-		if (!self.grounded)
-			self.animPhase = 7;
-	};
-	
-	self.processAttacks = () => {
-		if (self.pressingAttack) {
-			let bullet = new Bullet ((self.facingLeft == true) ? self.x - 16 : self.x + 50, self.y + 15, (self.facingLeft == true) ? "left" : "right", self.id);
-			BULLETS.push (bullet);
-			self.pressingAttack = false;
-		}
-	};*/

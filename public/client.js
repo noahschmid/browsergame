@@ -4,7 +4,7 @@ let Client = function(context, w, h) {
 		this.offsetX = 0;
 		this.offsetY = 0;
 		this.localPlayer = {};
-		this.players = {};
+		this.otherPlayers = [];
 		this.bullets = {};
 		
 		this.debugMode = false;
@@ -33,6 +33,12 @@ let Client = function(context, w, h) {
 		this.netLatency = 0.001;
 		
 		this.debugButton = { x:10, y:10, w:70, h:20, text:"debug OFF" };
+		this.inputSeq = 0;
+		this.inputs = [];
+		
+		this.messages = [];
+		
+		this.keyPresses = { left:false, right:false, up:false, down:false, fire:false, jump:false };
 		
 		this.canvas.addEventListener('click', function(evt) {
 		    let mousePos = this.getMousePos(evt);
@@ -69,26 +75,43 @@ let Client = function(context, w, h) {
 		this.map.tileSet[this.map.tileSetsLoaded].src = filename;
 	};
 	
+	Client.prototype.resize = function(width, height) {
+		this.canvasWidth = width;
+		this.canvasHeight = height;
+		this.map.resize (width, height);
+	};
+	
 	Client.prototype.onDisconnected = function(data) {
 		this.state = "not-connected";
 	};
 	
 	Client.prototype.onServerUpdateReceived = function(data) {
-		this.players = data;
+		/*this.players = data;
 		
 		for (let i = 0; i < data.length; i++) 
 			if (data[i].id == this.localPlayer.id) 
-				this.localPlayer = data[i];
+				this.localPlayer = data[i];*/
 	};
 	
 	Client.prototype.onConnected = function(data) {
-		this.localPlayer.id = data.id;
-		
 		this.map.map = data.map;
 		this.map.tileSize = data.tileSize;
 		this.map.tileSetNames = data.tileSetNames;
 		this.map.mapWidth = data.mapWidth;
 		this.map.mapHeight = data.mapHeight;
+		
+		for (let i in data.players) {
+			if (data.players[i].playerId == data.id) {
+				this.localPlayer = data.players[i];
+				Object.setPrototypeOf(this.localPlayer, Player.prototype);
+				this.localPlayer.map = this.map;
+			}
+			else {
+				this.otherPlayers[i] = data.players[i];
+				Object.setPrototypeOf(this.otherPlayers[i], Player.prototype);
+				this.otherPlayers[i].map = this.map;
+			}
+		}
 		
 		let tileSetBuffer = new Image();
 		
@@ -96,14 +119,40 @@ let Client = function(context, w, h) {
 			this.loadTileSet(this.map.tileSetNames[i], tileSetBuffer);
 		
 		console.log("--initialization packet received--");
-		console.log("your id: " + this.localPlayer.id);
+		console.log("your id: " + this.localPlayer.playerId);
 		console.log("received map with size " + (this.map.map[0].length) + "x" + this.map.map[0][0].length);
 		
+		this.localTime = data.serverTime + this.netLatency;
+		
 		this.state = "connected";
+		
+		this.messages.push("you joined the room");
+		this.messages.push((this.otherPlayers.length + 1) + " players online");
 	};
 	
 	Client.prototype.onNetMessage = function(msg) {
 		console.log (msg);
+	};
+	
+	Client.prototype.onPing = function(data) {
+		this.netPing = Math.round((Date.now() - data.time) * 100) / 100;
+		this.netLatency = this.netPing/2;
+	};
+	
+	Client.prototype.onPlayerJoined = function(data) {
+		this.otherPlayers.push(data);
+		this.messages.push ("player[" + data.playerId + "] joined the room.");
+		console.log ("player[" + data.playerId + "] joined the room.");
+	};
+	
+	Client.prototype.onPlayerLeft = function(id) {
+		for (let i in this.otherPlayers) {
+			if (this.otherPlayers[i].playerId == id) {
+				this.otherPlayers.splice(i, 1);
+				this.messages.push("player[" + id + "] has left the room.");
+				console.log ("player[" + id + "] has left the room.");
+			}
+		}
 	};
 	
 	Client.prototype.connectToServer = function() {
@@ -125,6 +174,10 @@ let Client = function(context, w, h) {
 			
 			this.socket.on('ping', this.onPing.bind(this));
 			
+			this.socket.on('onplayerjoined', this.onPlayerJoined.bind(this));
+			
+			this.socket.on('onplayerleft', this.onPlayerLeft.bind(this));
+			
 			this.startPingTimer();
 
 	};	
@@ -134,85 +187,108 @@ let Client = function(context, w, h) {
 		if (this.state == 'connected') {
 			this.context.fillStyle = "black";
 			this.context.fillRect (0,0,this.canvasWidth,this.canvasHeight);
-			this.map.update(this.localPlayer);
+			this.handleInputs();
+			this.map.update(this.localPlayer.position);
 			this.map.drawMap(this.context);
-			this.drawPlayers(this.context, delta);
+			this.render(this.context);
 		}	
 	};
 	
-	Client.prototype.drawPlayers = function() {
+	Client.prototype.updatePhysics = function() {
+		GameCore.prototype.updatePhysics.apply(this);
+		if (this.state == 'connected') {
+			this.localPlayer.updatePosition(this.deltaTime);
+		}
+	};
+	
+	Client.prototype.render = function() {
+		for (var i = 0; i < this.otherPlayers.length; i++)
+			this.drawPlayer(this.otherPlayers[i]);
+		this.drawPlayer(this.localPlayer);
 		
-		for (var i = 0; i < this.players.length; i++) {
-			let bbox = { x:this.players[i].x+16, y:this.players[i].y, width:32, height:64 };
+		this.drawButton(this.debugButton);
+		
+		if (this.debugMode)
+			this.drawDebugGUI();
+		
+		this.context.font = "14px Arial";
+		this.context.textAlign = 'center';
+		this.context.textBaseline = 'middle'
+		this.context.fillText ("points: " + this.localPlayer.points, this.canvasWidth - 50, 15);
+		
+		this.context.textAlign = "left";
+		this.context.font = "13px Arial";
+		this.context.textBaseLine = "middle";
+		this.context.fillText("ping: " + this.netPing, this.debugButton.x, this.debugButton.y + this.debugButton.h + 15);
+		
+		for (let i in this.messages) {
+			this.context.fillText(this.messages[i], this.debugButton.x, this.debugButton.y + this.debugButton.h + 30 + 15 * i);
+		}
+	};
+	
+	Client.prototype.drawPlayer = function(player) {
+		let bbox = { x:player.position.x+16, y:player.position.y, width:32, height:64 };
 			
-			this.context.strokeStyle = "red";
-			this.context.fillStyle = "white";
-			this.context.beginPath ();
-			this.context.rect (this.players[i].x - this.map.offsetX, this.players[i].y - this.map.offsetY - 5, 64, 5);
-			this.context.fillRect (this.players[i].x - this.map.offsetX, this.players[i].y - this.map.offsetY - 5, 64, 5);
-			this.context.stroke ();
+		this.context.strokeStyle = "red";
+		this.context.fillStyle = "white";
+		this.context.beginPath ();
+		this.context.rect (player.position.x - this.map.offsetX, player.position.y - this.map.offsetY - 5, player.size.x, 5);
+		this.context.fillRect (player.position.x - this.map.offsetX, player.position.y - this.map.offsetY - 5, player.size.x, 5);
+		this.context.stroke ();
 			
+		this.context.fillStyle = "red";
+		this.context.beginPath ();
+		this.context.fillRect (player.position.x - this.map.offsetX, player.position.y - this.map.offsetY - 5, (player.health / 100) * player.size.x, 5);
+		this.context.stroke ();
+			
+		const buffer = document.createElement('canvas');
+		buffer.width = player.size.x;
+		buffer.height = player.size.y;
+		const bufferContext = buffer.getContext('2d');
+			
+		if (player.facingLeft) {
+			bufferContext.scale (-1, 1);
+			bufferContext.translate (-64, 0);
+		}
+		
+		bufferContext.drawImage (this.playerImage, 64 * (Math.floor(player.animPhase) % 10), 64 * Math.floor (Math.floor(player.animPhase) / 10), player.size.x, player.size.y, 0, 0, player.size.x, player.size.y);
+		this.context.drawImage (buffer, player.position.x - this.map.offsetX, player.position.y - this.map.offsetY, player.size.x, player.size.y);
+		this.context.font = "18px Georgia";
+		
+		if (player.id == this.localPlayer.id) {
+			this.context.textAlign = "center";
+			this.context.fillStyle = "blue";	
+		} else {
+			this.context.textAlign = "center";
 			this.context.fillStyle = "red";
+		}
+		
+		this.context.fillText ("player[" + player.playerId + "]", player.position.x - this.map.offsetX + 32, player.position.y - this.map.offsetY - 15);
+	};
+	
+	Client.prototype.drawDebugGUI = function() {
+		for (let i in this.localPlayer.collisionBlocksX) {
+			let block1 = this.localPlayer.collisionBlocksX[i];
+		
+			if (block1.type == 55)
+				this.context.strokeStyle = "red";
+			else
+				this.context.strokeStyle = "blue";
 			this.context.beginPath ();
-			this.context.fillRect (this.players[i].x - this.map.offsetX, this.players[i].y - this.map.offsetY - 5, (this.players[i].health / 100) * 64, 5);
+			this.context.rect (block1.left - this.map.offsetX, block1.top - this.map.offsetY, 32, 32);
 			this.context.stroke ();
-			
-			const buffer = document.createElement('canvas');
-			buffer.width = 64;
-			buffer.height = 64;
-			const bufferContext = buffer.getContext('2d');
-			
-			if (this.players[i].facingLeft) {
-				bufferContext.scale (-1, 1);
-				bufferContext.translate (-64, 0);
-			}
-			bufferContext.drawImage (this.playerImage, 64 * (Math.floor(this.players[i].animPhase) % 10), 64 * Math.floor (Math.floor(this.players[i].animPhase) / 10), 64, 64, 0, 0, 64, 64);
-			this.context.drawImage (buffer, this.players[i].x - this.map.offsetX, this.players[i].y - this.map.offsetY, 64, 64);
-			this.context.font = "18px Georgia";
-			if (this.players[i].id == this.localPlayer.id) {
-				this.context.textAlign = "center";
-				this.context.fillStyle = "blue";
-				this.context.fillText ("client[" + this.players[i].id + "]", this.localPlayer.x - this.map.offsetX + 32, this.localPlayer.y - this.map.offsetY - 15);
-				
-				this.context.fillText ("points: " + this.localPlayer.points, this.canvasWidth - 50, 15);
-			} else {
-				this.context.textAlign = "center";
-				this.context.fillStyle = "red";
-				this.context.fillText ("client[" + this.players[i].id + "] ", this.players[i].x  - this.map.offsetX + 32, this.players[i].y - this.map.offsetY - 15);
-			}
-			
-			this.drawButton(this.debugButton);
-			
-			if (this.debugMode) {
-				for (let i in this.localPlayer.collisionBlocksX) {
-					let block1 = this.localPlayer.collisionBlocksX[i];
-				
-					if (block1.type == 55)
-						this.context.strokeStyle = "red";
-					else
-						this.context.strokeStyle = "blue";
-					this.context.beginPath ();
-					this.context.rect (block1.left - this.map.offsetX, block1.top - this.map.offsetY, 32, 32);
-					this.context.stroke ();
-				}
-			
-				for (let a in this.localPlayer.collisionBlocksY) {
-					let block2 = this.localPlayer.collisionBlocksY[a];
-				
-					if (block2.type == 55)
-						this.context.strokeStyle = "red";
-					else
-						this.context.strokeStyle = "blue";
-					this.context.beginPath ();
-					this.context.rect (block2.left - this.map.offsetX, block2.top - this.map.offsetY, 32, 32);
-					this.context.stroke ();
-				}
-				
-				this.context.textAlign = "left";
-				this.context.font = "13px Arial";
-				this.context.textBaseLine = "middle";
-				this.context.fillText("ping: " + this.netPing, this.debugButton.x, this.debugButton.y + this.debugButton.h + 15);
-			}
+		}
+	
+		for (let a in this.localPlayer.collisionBlocksY) {
+			let block2 = this.localPlayer.collisionBlocksY[a];
+		
+			if (block2.type == 55)
+				this.context.strokeStyle = "red";
+			else
+				this.context.strokeStyle = "blue";
+			this.context.beginPath ();
+			this.context.rect (block2.left - this.map.offsetX, block2.top - this.map.offsetY, 32, 32);
+			this.context.stroke ();
 		}
 	};
 		
@@ -233,14 +309,9 @@ let Client = function(context, w, h) {
 		
 		Client.prototype.startPingTimer = function() {
 			setInterval(function() {
-				this.lastPingTime = new Date().getTime();
-				this.socket.emit('ping', (this.lastPingTime));
+				this.lastPingTime = Date.now();
+				this.socket.emit('ping', { time:this.lastPingTime });
 			}.bind(this), 1000);
-		};
-		
-		Client.prototype.onPing = function(data) {
-			this.netPing = Math.round((new Date().getTime () - parseFloat(data)) * 100) / 100;
-			this.netLatency = this.netPing/2;
 		};
 
 		/*
@@ -272,39 +343,85 @@ let Client = function(context, w, h) {
 	    this.context.fillText(button.text, button.x + button.w/2, button.y + button.h/2);
 	  };
 	  
+	Client.prototype.handleInputs = function() {
+		  let inputs = [];
+		  this.localPlayer.keyPresses = this.keyPresses;
+		  
+		  if (this.keyPresses.right) {
+			  inputs.push('right');
+		  }
+		  if (this.keyPresses.left) {
+			  inputs.push('left');
+		  }
+		  if (this.keyPresses.up)
+			  inputs.push('up');
+		  
+		  if (this.keyPresses.down)
+			  inputs.push('down');
+		  
+		  if (this.keyPresses.jump){
+			  inputs.push('jump');
+		  }
+		  
+  		if (inputs.length > 0){
+  			this.inputSeq += 1;
+  			this.inputs.push ({inputs:inputs, time:this.localTime.fixed(3)});
+			
+  			let serverPacket = inputs.join("-") + ".";
+  			serverPacket += this.localTime.toFixed(3).replace('.', '-') + '.';
+  			serverPacket += this.inputSeq;
+			
+  			this.socket.emit ("input", serverPacket); 
+  		}
+	  };
+	  
 	  Client.prototype.onKeyDown = function (event) {
   		if (event.keyCode === 68 || event.keyCode == 39) {// d
-  			this.socket.emit ("keyPress", { inputId :'right', state : true });
+			this.keyPresses.right = true;
+			
+  			//this.socket.emit ("keyPress", { inputId :'right', state : true });
   		}
   		if (event.keyCode === 83){ // s
-  			this.socket.emit ("keyPress", { inputId :'down', state : true });
+			this.keyPresses.down = true;
+  			//this.socket.emit ("keyPress", { inputId :'down', state : true });
   		}
   		if (event.keyCode === 65 || event.keyCode == 37) {// a
-  			this.socket.emit ("keyPress", { inputId :'left', state : true });
+			this.keyPresses.left = true;
+  			//this.socket.emit ("keyPress", { inputId :'left', state : true });
   		}
-  		if (event.keyCode === 87) { // w
-  			this.socket.emit ("keyPress", { inputId : 'up', state : true });
+  		if (event.keyCode === 87 || event.keyCode == 38) { // w
+			this.keyPresses.up = true;
+  			//this.socket.emit ("keyPress", { inputId : 'up', state : true });
   		}
-  		if (event.keyCode == 32 || event.keyCode == 38) {
-  			this.socket.emit ("keyPress", { inputId : 'space', state : true });
+  		if (event.keyCode == 32) {
+			this.keyPresses.jump = true;
+  			//this.socket.emit ("keyPress", { inputId : 'space', state : true });
   		}
 		
-  		if (event.keyCode == 18) 
-  			this.socket.emit ("keyPress", { inputId : 'fire', state : true });
+  		if (event.keyCode == 18) {
+			this.keyPresses.fire = true;
+  			//this.socket.emit ("keyPress", { inputId : 'fire', state : true });
+		}
 	  };
 	  
   	Client.prototype.onKeyUp = function (event) {
   		if (event.keyCode === 68 || event.keyCode == 39) // d
-  			this.socket.emit ("keyPress", { inputId :'right', state : false, time:Date.now () });
+			this.keyPresses.right = false;
+  			//this.socket.emit ("keyPress", { inputId :'right', state : false, time:Date.now () });
   		if (event.keyCode === 83) // s
-  			this.socket.emit ("keyPress", { inputId :'down', state : false, time:Date.now () });
+			this.keyPresses.down = false;
+  		//	this.socket.emit ("keyPress", { inputId :'down', state : false, time:Date.now () });
   		if (event.keyCode === 65 || event.keyCode == 37) // a
-  			this.socket.emit ("keyPress", { inputId :'left', state : false, time:Date.now ()  });
+			this.keyPresses.left = false;
+  		//	this.socket.emit ("keyPress", { inputId :'left', state : false, time:Date.now ()  });
   		if (event.keyCode === 87) // w
-  			this.socket.emit ("keyPress", { inputId : 'up', state : false, time:Date.now ()  });
+			this.keyPresses.up = false;
+  			//this.socket.emit ("keyPress", { inputId : 'up', state : false, time:Date.now ()  });
   		if (event.keyCode == 32 || event.keyCode == 38) 
-  			this.socket.emit ("keyPress", { inputId : 'space', state : false, time:Date.now ()  });
+			this.keyPresses.jump = false;
+  			//this.socket.emit ("keyPress", { inputId : 'space', state : false, time:Date.now ()  });
   		if (event.keyCode == 18) 
-  			this.socket.emit ("keyPress", { inputId : 'fire', state : false, time:Date.now ()  });
+			this.keyPresses.fire = false;
+  			//this.socket.emit ("keyPress", { inputId : 'fire', state : false, time:Date.now ()  });
   	};
 	

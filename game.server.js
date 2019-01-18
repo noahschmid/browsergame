@@ -8,13 +8,14 @@ let Server = function () {
 	GameCore.prototype.constructor.call(this);
 	this.players = {};
 	this.clients = {};
-	this.serverTime = 0;
 	this.lastState = {};
 	
 	this.freeIds = [];
 	this.numClients = 0;
 	
 	this.map = new MapController();
+	
+	this.inputList = [];
 };
 
 Server.prototype = new GameCore();
@@ -64,9 +65,15 @@ Server.prototype.startListening = function(binder) {
 		this.players[client.userid] = player;
 		this.numClients++;
 		client.emit ('message', 'connected to master server.'); 
-		client.emit ('onconnected', { id:client.userid, map:this.map.map, tileSetNames:this.map.tileSetNames, tileSize:this.map.tileSize, mapWidth:this.map.mapWidth, mapHeight:this.map.mapHeight } ); 
-	
+		client.emit ('onconnected', { id:client.userid, map:this.map.map, tileSetNames:this.map.tileSetNames, tileSize:this.map.tileSize, mapWidth:this.map.mapWidth, mapHeight:this.map.mapHeight, players:this.players, serverTime:this.localTime } ); 
+		
+		for (let i in this.clients) {
+			if (this.clients[i].userid != client.userid)
+				this.clients[i].emit ('onplayerjoined', player);
+		}
+		
 		client.on("keyPress", function(event) {
+			this.inputList.push ({ id:client.userid, input:event.inputId, state:event.state, time:inputTime, sec:inputSec });
 			if (event.inputId == 'right') 
 				this.players[client.userid].pressingRight = event.state;
 			if (event.inputId == 'left')
@@ -89,15 +96,21 @@ Server.prototype.startListening = function(binder) {
 		}.bind(binder));
 		
 		client.on('ping', function(data) {
-			client.emit ('ping', data);
+			client.emit ('ping', { time:data.time });
 		});
 	
 		client.on('disconnect', function () { 
-			console.log ("client [" + client.userid +"] disconnected."); 
-			this.freeIds.push (client.userid);
+			console.log ("client[" + client.userid +"] disconnected."); 
+			for (let i in this.clients) {
+				if (this.clients[i].userid != client.userid)
+					this.clients[i].emit ('onplayerleft', client.userid);
+			}
+				
 			delete this.clients[client.userid];
 			delete this.players[client.userid];
+			
 			this.numClients--;
+			this.freeIds.push (client.userid);
 		}.bind(binder));
 	}.bind(binder));
 
@@ -109,13 +122,12 @@ Server.prototype.handleInput = function() {
 	
 };
 
-Server.prototype.mainUpdate = function(delta){
+Server.prototype.mainUpdate = function(){
 	GameCore.prototype.mainUpdate.apply(this);
 	
 	let pack = [];
 	for (let i in this.players) {
 		let player = this.players[i];
-		player.updatePosition (delta);
 		pack.push ( { id:player.playerId, x:player.position.x, y:player.position.y, animPhase:player.animPhase, 
 		collisionBlocksX:player.collisionBlocksX, collisionBlocksY:player.collisionBlocksY, facingLeft:player.facingLeft, health:player.health, points:0 } );
 	}
@@ -134,5 +146,14 @@ Server.prototype.mainUpdate = function(delta){
 		let client = this.clients[e];
 		client.emit ('serverupdate', pack);
 		//client.emit ('bulletList', BULLETS);
+	}
+};
+
+Server.prototype.updatePhysics = function() {
+	GameCore.prototype.updatePhysics.apply(this);
+	
+	for (let i in this.players) {
+		let player = this.players[i];
+		player.updatePosition (this.deltaTime);
 	}
 };
