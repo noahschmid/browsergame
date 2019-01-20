@@ -73,7 +73,9 @@ Server.prototype.startListening = function(binder) {
 		}
 		
 		client.on("keyPress", function(event) {
-			this.players[client.userid].keyPresses = event.keys;/*
+			this.players[client.userid].keyPresses = event.keys;
+			this.players[client.userid].inputs.push(event);
+			this.players[client.userid].inputSeq = event.seq;/*
 			//this.inputList.push ({ id:client.userid, input:event.inputId, state:event.state, time:inputTime, sec:inputSec });
 			if (event.inputId == 'right') 
 				this.players[client.userid].keyPresses.right = event.state;

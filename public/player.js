@@ -63,6 +63,7 @@ let Player = function (id, map){
 
             //Our local history of inputs
         this.inputs = [];
+		this.inputSeq = 0;
 };
 
 if ( 'undefined' != typeof global ) {

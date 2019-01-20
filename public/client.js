@@ -50,6 +50,7 @@ let Client = function(context, w, h) {
 		}.bind(this));
 		
 		this.serverUpdates = [];
+		this.pendingUpdates = [];
 		
 		document.onkeydown = function (event) { this.onKeyDown(event) }.bind(this);
 		document.onkeyup = function (event) { this.onKeyUp(event) }.bind(this);
@@ -98,10 +99,32 @@ let Client = function(context, w, h) {
 			this.players.push(player);
 			
 			if (player.playerId == this.localPlayer.playerId) {
+				
 				this.localPlayer.position = player.position;
 				
+				let j = 0;
+				while (j < this.pendingUpdates.length) {
+					let update = this.pendingUpdates[j];
+					if (player.inputSeq <= update.inputSeq) {
+						this.pendingUpdates.splice(j, 1);
+					} else {
+						this.applyUpdate(j);
+						j++;
+					}
+				}
+				
+				this.pendingUpdates = [];
 			}
 		}
+	};
+	
+	Client.prototype.applyUpdate = function(j) {
+		let delta = this.deltaTime;
+		if (j+1 < this.pendingUpdates.length)
+			delta = this.pendingUpdates[j+1].time - this.pendingUpdates[j].time;
+		
+		this.localPlayer.keyPresses = this.pendingUpdates[j].keys;
+		this.localPlayer.updatePosition(delta);
 	};
 	
 	Client.prototype.addMessage = function(msg) {
@@ -364,14 +387,14 @@ let Client = function(context, w, h) {
 	  };
 	  
 	Client.prototype.handleInputs = function() {
-		if (this.keyEvent == false)
-			return;
+		//if (this.keyEvent == false)
+		//	return;
 		
   		this.inputSeq += 1;
 		this.localPlayer.keyPresses = this.keyPresses;
   		this.localPlayer.inputs.push ({keyPresses:this.keyPresses, time:this.localTime.fixed(3), seq:this.inputSeq});
-			
-		this.socket.emit ("keyPress", { keys:this.keyPresses, time:new Date().getTime() });
+		this.pendingUpdates.push ({keyPresses:this.keyPresses, time:this.localTime.fixed(3), seq:this.inputSeq});
+		this.socket.emit ("keyPress", { keys:this.keyPresses, time:new Date().getTime(), seq:this.inputSeq });
 		this.keyEvent = false;
 	};
 	  
