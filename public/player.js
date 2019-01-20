@@ -55,6 +55,8 @@ let Player = function (id, map){
 		this.health = 100;
 		this.points = 0;
 		
+		this.jumpCoolOff = false;
+		
         this.old_state = { position:this.lastPosition, velocity:this.velocity };
         this.cur_state = { position:this.position, velocity:this.velocity };
         this.state_time = new Date().getTime();
@@ -109,13 +111,15 @@ if ( 'undefined' != typeof global ) {
 		
 		this.testX ();
 		
-		if (this.keyPresses.jump) {
+		if (this.keyPresses.jump && this.jumpCoolOff) {
 			if ((this.jumpsLeft == 0 && this.grounded) || this.jumpsLeft == 1) {
-				this.keyPresses.jump = false;
 				this.velocity.y = -JUMP_SPEED;
 				this.jumpsLeft = this.jumpsLeft == 0 ? 1 : 0;
+				this.jumpCoolOff = false;
+				console.log(this.jumpsLeft);
 			}
-		}
+		} else if (!this.keyPresses.jump)
+			this.jumpCoolOff = true;
 		
 		this.velocity.y = this.velocity.y < MAX_GRAVITY ? this.velocity.y + GRAVITY * delta : this.velocity.y;
 		
@@ -217,8 +221,9 @@ if ( 'undefined' != typeof global ) {
 												 
 		this.grounded = false;
 		for (let i in tiles) {
-			if (tiles[i].type == this.map.tileTypes.collider)
+			if (tiles[i].type == this.map.tileTypes.collider) {
 				this.grounded = true;
+			}
 		}
 	};
 	

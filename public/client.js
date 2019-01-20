@@ -36,6 +36,7 @@ let Client = function(context, w, h) {
 		this.inputSeq = 0;
 		
 		this.messages = [];
+		this.keyEvent = false;
 		
 		this.keyPresses = { left:false, right:false, up:false, down:false, fire:false, jump:false };
 		
@@ -96,8 +97,10 @@ let Client = function(context, w, h) {
 			Object.setPrototypeOf(player, Player.prototype);
 			this.players.push(player);
 			
-			if (player.playerId == this.localPlayer.playerId)
-				this.localPlayer = player;
+			if (player.playerId == this.localPlayer.playerId) {
+				this.localPlayer.position = player.position;
+				
+			}
 		}
 	};
 	
@@ -214,7 +217,6 @@ let Client = function(context, w, h) {
 		if (this.state == 'connected') {
 			this.context.fillStyle = "black";
 			this.context.fillRect (0,0,this.canvasWidth,this.canvasHeight);
-			this.handleInputs();
 			this.map.update(this.localPlayer.position);
 			this.map.drawMap(this.context);
 			this.render(this.context);
@@ -224,6 +226,7 @@ let Client = function(context, w, h) {
 	Client.prototype.updatePhysics = function() {
 		GameCore.prototype.updatePhysics.apply(this);
 		if (this.state == 'connected') {
+			this.handleInputs();
 			this.localPlayer.updatePosition(this.physicsDelta);
 		}
 	};
@@ -341,17 +344,6 @@ let Client = function(context, w, h) {
 				this.socket.emit('p', this.lastPingTime);
 			}.bind(this), 1000);
 		};
-
-		/*
-		for (let i = 0; i < BULLETS.length; i++) {
-			context.strokeStyle = "black";
-			context.fillStyle = "black";
-			context.beginPath ();
-			context.fillRect (BULLETS[i].x - offsetX, BULLETS[i].y - offsetY, BULLETS[i].width, BULLETS[i].height);
-			context.stroke ();
-		}
-		
-		*/
 	
 	
 	Client.prototype.drawButton = function(button) {
@@ -372,88 +364,66 @@ let Client = function(context, w, h) {
 	  };
 	  
 	Client.prototype.handleInputs = function() {
-		  let inputs = [];
-		  //this.localPlayer.keyPresses = this.keyPresses;
-		  
-		/*  if (this.keyPresses.right) {
-			  inputs.push('right');
-		  }
-		  if (this.keyPresses.left) {
-			  inputs.push('left');
-		  }
-		  if (this.keyPresses.up)
-			  inputs.push('up');
-		  
-		  if (this.keyPresses.down)
-			  inputs.push('down');
-		  
-		  if (this.keyPresses.jump){
-			  inputs.push('jump');
-		  }*/
-		  
-  		//if (inputs.length > 0){
-  			this.inputSeq += 1;
-  			this.localPlayer.inputs.push ({keyPresses:this.keyPresses, time:this.localTime.fixed(3), seq:this.inputSeq});
+		if (this.keyEvent == false)
+			return;
+		
+  		this.inputSeq += 1;
+		this.localPlayer.keyPresses = this.keyPresses;
+  		this.localPlayer.inputs.push ({keyPresses:this.keyPresses, time:this.localTime.fixed(3), seq:this.inputSeq});
 			
-  			/*let serverPacket = inputs.join("-") + ".";
-  			serverPacket += this.localTime.toFixed(3).replace('.', '-') + '.';
-  			serverPacket += this.inputSeq;*/
-			
-  			//this.socket.emit ("input", {keyPresses:this.keyPresses, time:this.localTime.fixed(3), seq:this.inputSeq}); 
-			//}
-	  };
+		this.socket.emit ("keyPress", { keys:this.keyPresses, time:new Date().getTime() });
+		this.keyEvent = false;
+	};
 	  
 	  Client.prototype.onKeyDown = function (event) {
+		  this.keyEvent = true;
   		if (event.keyCode === 68 || event.keyCode == 39) {// d
-			this.localPlayer.keyPresses.right = true;
+			this.keyPresses.right = true;
 			
   			//this.socket.emit ("keyPress", { inputId :'right', state : true });
   		}
   		if (event.keyCode === 83){ // s
-			this.localPlayer.keyPresses.down = true;
+			this.keyPresses.down = true;
   			//this.socket.emit ("keyPress", { inputId :'down', state : true });
   		}
   		if (event.keyCode === 65 || event.keyCode == 37) {// a
-			this.localPlayer.keyPresses.left = true;
+			this.keyPresses.left = true;
   			//this.socket.emit ("keyPress", { inputId :'left', state : true });
   		}
   		if (event.keyCode === 87 || event.keyCode == 38) { // w
-			this.localPlayer.keyPresses.up = true;
+			this.keyPresses.up = true;
   			//this.socket.emit ("keyPress", { inputId : 'up', state : true });
   		}
   		if (event.keyCode == 32) {
-			this.localPlayer.keyPresses.jump = true;
+			this.keyPresses.jump = true;
   			//this.socket.emit ("keyPress", { inputId : 'jump', state : true });
   		}
 		
   		if (event.keyCode == 18) {
-			this.localPlayer.keyPresses.fire = true;
+			this.keyPresses.fire = true;
   			//this.socket.emit ("keyPress", { inputId : 'fire', state : true });
 		}
-		
-		this.socket.emit ("keyPress", { keys:this.localPlayer.keyPresses, time:new Date().getTime() });
 	  };
 	  
   	Client.prototype.onKeyUp = function (event) {
+		this.keyEvent = true;
   		if (event.keyCode === 68 || event.keyCode == 39) // d
-			this.localPlayer.keyPresses.right = false;
+			this.keyPresses.right = false;
   			//this.socket.emit ("keyPress", { inputId :'right', state : false, time:Date.now () });
   		if (event.keyCode === 83) // s
-			this.localPlayer.keyPresses.down = false;
+			this.keyPresses.down = false;
   			//this.socket.emit ("keyPress", { inputId :'down', state : false, time:Date.now () });
   		if (event.keyCode === 65 || event.keyCode == 37) // a
-			this.localPlayer.keyPresses.left = false;
+			this.keyPresses.left = false;
   			//this.socket.emit ("keyPress", { inputId :'left', state : false, time:Date.now ()  });
   		if (event.keyCode === 87) // w
-			this.localPlayer.keyPresses.up = false;
+			this.keyPresses.up = false;
   			//this.socket.emit ("keyPress", { inputId : 'up', state : false, time:Date.now ()  });
   		if (event.keyCode == 32 || event.keyCode == 38) 
-			this.localPlayer.keyPresses.jump = false;
+			this.keyPresses.jump = false;
   			//this.socket.emit ("keyPress", { inputId : 'jump', state : false, time:Date.now ()  });
   		if (event.keyCode == 18) 
-			this.localPlayer.keyPresses.fire = false;
+			this.keyPresses.fire = false;
   			//this.socket.emit ("keyPress", { inputId : 'fire', state : false, time:Date.now ()  });
-			
-		this.socket.emit ("keyPress", { keys:this.localPlayer.keyPresses, time:new Date().getTime() });
   	};
 	
