@@ -84,7 +84,7 @@ GameCore.prototype.updatePhysics = function() {
 GameCore.prototype.startPhysicsLoop = function() {
 	setInterval (function() {
 		this.physicsDelta = (new Date().getTime() - this.physicsLastDelta) / 1000;
-		this.lastPhysicsDelta = new Date().getTime();
+		this.physicsLastDelta = new Date().getTime();
 		this.updatePhysics();
 	}.bind(this), 15)
 };

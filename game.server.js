@@ -6,8 +6,8 @@ let GameCore = require("./public/game.core");
 
 let Server = function () {
 	GameCore.prototype.constructor.call(this);
-	this.players = {};
-	this.clients = {};
+	this.players = [];
+	this.clients = [];
 	this.lastState = {};
 	
 	this.freeIds = [];
@@ -73,26 +73,36 @@ Server.prototype.startListening = function(binder) {
 		}
 		
 		client.on("keyPress", function(event) {
-			this.inputList.push ({ id:client.userid, input:event.inputId, state:event.state, time:inputTime, sec:inputSec });
+			this.players[client.userid].keyPresses = event.keys;/*
+			//this.inputList.push ({ id:client.userid, input:event.inputId, state:event.state, time:inputTime, sec:inputSec });
 			if (event.inputId == 'right') 
-				this.players[client.userid].pressingRight = event.state;
+				this.players[client.userid].keyPresses.right = event.state;
 			if (event.inputId == 'left')
-				this.players[client.userid].pressingLeft = event.state;
+				this.players[client.userid].keyPresses.left = event.state;
 			if (event.inputId == 'up')
-				this.players[client.userid].pressingUp = event.state;
+				this.players[client.userid].keyPresses.up = event.state;
 			if (event.inputId =='down')
-				this.players[client.userid].pressingDown = event.state;
-			if (event.inputId == 'space') {
-				this.players[client.userid].pressingSpace = event.state;
+				this.players[client.userid].keyPresses.down = event.state;
+			if (event.inputId == 'jump') {
+				this.players[client.userid].keyPresses.jump = event.state;
 				if (!event.state) {
 					this.players[client.userid].canJump = true;
 				}
 			}
 			if (event.inputId == 'fire') {
-				this.players[client.userid].pressingAttack = event.state;
-				if (event.state)
+				this.players[client.userid].keyPresses.fire = event.state;
+				/*if (event.state)
 					this.players[client.userid].respawn(mainMap.getStartPosition(0));
-			}
+			}*/
+		}.bind(binder));
+		
+		client.on("input", function(data) {
+			/*let parts = data.split('.');
+	        let commands = parts[0].split('-');
+	        let time = parts[1].replace('-','.');
+	        let seq = parts[2];*/
+			
+			this.handleInputs(data.keyPresses, data.time, data.seq, client.userid);
 		}.bind(binder));
 		
 		client.on('p', function(data) {
@@ -101,14 +111,14 @@ Server.prototype.startListening = function(binder) {
 	
 		client.on('disconnect', function () { 
 			console.log ("client[" + client.userid +"] disconnected."); 
-			for (let i in this.clients) {
-				if (this.clients[i].userid != client.userid)
-					this.clients[i].emit ('onplayerleft', client.userid);
-			}
-				
+			
 			delete this.clients[client.userid];
 			delete this.players[client.userid];
 			
+			for (let i in this.clients) {
+				this.clients[i].emit ('onplayerleft', client.userid);
+			}
+				
 			this.numClients--;
 			this.freeIds.push (client.userid);
 		}.bind(binder));
@@ -118,19 +128,25 @@ Server.prototype.startListening = function(binder) {
 	server.listen (process.env.PORT || 8080, ()=> {console.log ("Server started on Port " + (process.env.PORT || 8080));});
 };
 
-Server.prototype.handleInput = function() {
-	
+Server.prototype.handleInputs = function(keys, time, seq, id) {
+	//this.players[id].inputs.push({keyPresses:keys, time:time, seq:seq});
 };
 
 Server.prototype.mainUpdate = function(){
 	GameCore.prototype.mainUpdate.apply(this);
 	
+	this.lastState = {players:this.players};
+	
+	
 	let pack = [];
 	for (let i in this.players) {
+		if (typeof this.players[i] == 'undefined')
+			continue;
 		let player = this.players[i];
-		pack.push ( { id:player.playerId, x:player.position.x, y:player.position.y, animPhase:player.animPhase, 
-		collisionBlocksX:player.collisionBlocksX, collisionBlocksY:player.collisionBlocksY, facingLeft:player.facingLeft, health:player.health, points:0 } );
+		pack.push ( player );
 	}
+	
+	this.lastState = { players:pack, time:this.localTime };
 	
 	/*for (let b in BULLETS) {
 		let bullet = BULLETS[b];
@@ -144,7 +160,7 @@ Server.prototype.mainUpdate = function(){
 	
 	for (let e in this.clients) {
 		let client = this.clients[e];
-		client.emit ('serverupdate', pack);
+		client.emit ('serverupdate', this.lastState);
 		//client.emit ('bulletList', BULLETS);
 	}
 };
@@ -154,6 +170,13 @@ Server.prototype.updatePhysics = function() {
 	
 	for (let i in this.players) {
 		let player = this.players[i];
-		player.updatePosition (this.deltaTime);
+		
+		/*for (let a in player.inputs) {
+			player.handleInputs(a);
+			player.updatePosition(this.physicsDelta);
+		}*/
+		
+		player.updatePosition(this.physicsDelta);
+		//player.inputs = [];
 	}
 };

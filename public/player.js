@@ -72,6 +72,9 @@ if ( 'undefined' != typeof global ) {
 		this.velocity.set (0, 0);
 	};
 	
+	Player.prototype.handleInputs = function(inputId) {
+		this.keyPresses = this.inputs[inputId].keyPresses;
+	};
 	
 	Player.prototype.updatePosition = function(delta) {
 		this.lastPosition = this.position;

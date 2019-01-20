@@ -4,7 +4,7 @@ let Client = function(context, w, h) {
 		this.offsetX = 0;
 		this.offsetY = 0;
 		this.localPlayer = {};
-		this.otherPlayers = [];
+		this.players = [];
 		this.bullets = {};
 		
 		this.debugMode = false;
@@ -29,12 +29,11 @@ let Client = function(context, w, h) {
 		this.playerImage.src = "hero.png";
 		
 		this.lastPingTime = new Date().getTime();
-		this.netPing = 0.001;
-		this.netLatency = 0.001;
+		this.netPing = 2;
+		this.netLatency = 1;
 		
 		this.debugButton = { x:10, y:10, w:70, h:20, text:"debug OFF" };
 		this.inputSeq = 0;
-		this.inputs = [];
 		
 		this.messages = [];
 		
@@ -86,11 +85,37 @@ let Client = function(context, w, h) {
 	};
 	
 	Client.prototype.onServerUpdateReceived = function(data) {
-		/*this.players = data;
+		this.players = [];
 		
-		for (let i = 0; i < data.length; i++) 
-			if (data[i].id == this.localPlayer.id) 
-				this.localPlayer = data[i];*/
+		for (let i in data.players) {
+			if (typeof data.players[i] == 'undefined')
+				continue;
+			
+			let player = data.players[i];
+			player.map = this.map;
+			Object.setPrototypeOf(player, Player.prototype);
+			this.players.push(player);
+			
+			if (player.playerId == this.localPlayer.playerId)
+				this.localPlayer = player;
+		}
+	};
+	
+	Client.prototype.addMessage = function(msg) {
+		this.messages.push ({msg:msg, time:new Date().getTime()});
+	};
+	
+	Client.prototype.renderMessages = function() {
+		this.context.textAlign = "left";
+		this.context.font = "13px Arial";
+		this.context.textBaseLine = "middle";
+		this.context.fillText("ping: " + this.netPing + "ms", this.debugButton.x, this.debugButton.y + this.debugButton.h + 15);
+		
+		for (let i in this.messages) {
+			this.context.fillText(this.messages[i].msg, this.debugButton.x, this.debugButton.y + this.debugButton.h + 30 + 15 * i);
+			if (new Date().getTime() - this.messages[i].time > 5000)
+				this.messages.splice(i, 1);
+		}
 	};
 	
 	Client.prototype.onConnected = function(data) {
@@ -100,16 +125,19 @@ let Client = function(context, w, h) {
 		this.map.mapWidth = data.mapWidth;
 		this.map.mapHeight = data.mapHeight;
 		
+		this.players = [];
+		
 		for (let i in data.players) {
-			if (data.players[i].playerId == data.id) {
-				this.localPlayer = data.players[i];
-				Object.setPrototypeOf(this.localPlayer, Player.prototype);
-				this.localPlayer.map = this.map;
-			}
-			else {
-				this.otherPlayers[i] = data.players[i];
-				Object.setPrototypeOf(this.otherPlayers[i], Player.prototype);
-				this.otherPlayers[i].map = this.map;
+			if (typeof data.players[i] == 'undefined')
+				continue;
+			
+			let player = data.players[i];
+			Object.setPrototypeOf(player, Player.prototype);
+			player.map = this.map;
+			this.players.push(player);
+			
+			if (player.playerId == data.id) {
+				this.localPlayer = player;
 			}
 		}
 		
@@ -126,8 +154,8 @@ let Client = function(context, w, h) {
 		
 		this.state = "connected";
 		
-		this.messages.push("you joined the room");
-		this.messages.push((this.otherPlayers.length + 1) + " players online");
+		this.addMessage("you joined the room");
+		this.addMessage((this.players.length) + " players online");
 	};
 	
 	Client.prototype.onNetMessage = function(msg) {
@@ -140,19 +168,18 @@ let Client = function(context, w, h) {
 	};
 	
 	Client.prototype.onPlayerJoined = function(data) {
-		this.otherPlayers.push(data);
-		this.messages.push ("player[" + data.playerId + "] joined the room.");
+		this.players.push(data);
+		this.addMessage ("player[" + data.playerId + "] joined the room.");
 		console.log ("player[" + data.playerId + "] joined the room.");
 	};
 	
 	Client.prototype.onPlayerLeft = function(id) {
-		for (let i in this.otherPlayers) {
-			if (this.otherPlayers[i].playerId == id) {
-				this.otherPlayers.splice(i, 1);
-				this.messages.push("player[" + id + "] has left the room.");
-				console.log ("player[" + id + "] has left the room.");
-			}
-		}
+		for (let i in this.players)
+			if (this.players[i].playerId == id)
+		 	   this.players.splice(i, 1);
+		
+		this.addMessage("player[" + id + "] has left the room.");
+		console.log ("player[" + id + "] has left the room.");
 	};
 	
 	Client.prototype.connectToServer = function() {
@@ -197,13 +224,16 @@ let Client = function(context, w, h) {
 	Client.prototype.updatePhysics = function() {
 		GameCore.prototype.updatePhysics.apply(this);
 		if (this.state == 'connected') {
-			this.localPlayer.updatePosition(this.deltaTime);
+			this.localPlayer.updatePosition(this.physicsDelta);
 		}
 	};
 	
 	Client.prototype.render = function() {
-		for (var i = 0; i < this.otherPlayers.length; i++)
-			this.drawPlayer(this.otherPlayers[i]);
+		for (let i in this.players) {
+			if (this.players[i].playerId != this.localPlayer.playerId)
+				this.drawPlayer(this.players[i]);
+		}
+		
 		this.drawPlayer(this.localPlayer);
 		
 		this.drawButton(this.debugButton);
@@ -216,17 +246,15 @@ let Client = function(context, w, h) {
 		this.context.textBaseline = 'middle'
 		this.context.fillText ("points: " + this.localPlayer.points, this.canvasWidth - 50, 15);
 		
-		this.context.textAlign = "left";
-		this.context.font = "13px Arial";
-		this.context.textBaseLine = "middle";
-		this.context.fillText("ping: " + this.netPing + "ms", this.debugButton.x, this.debugButton.y + this.debugButton.h + 15);
-		
-		for (let i in this.messages) {
-			this.context.fillText(this.messages[i], this.debugButton.x, this.debugButton.y + this.debugButton.h + 30 + 15 * i);
-		}
+		this.renderMessages();
 	};
 	
 	Client.prototype.drawPlayer = function(player) {
+		if (typeof player == 'undefined') {
+			console.log(player);
+			return;
+		}
+		
 		let bbox = { x:player.position.x+16, y:player.position.y, width:32, height:64 };
 			
 		this.context.strokeStyle = "red";
@@ -345,9 +373,9 @@ let Client = function(context, w, h) {
 	  
 	Client.prototype.handleInputs = function() {
 		  let inputs = [];
-		  this.localPlayer.keyPresses = this.keyPresses;
+		  //this.localPlayer.keyPresses = this.keyPresses;
 		  
-		  if (this.keyPresses.right) {
+		/*  if (this.keyPresses.right) {
 			  inputs.push('right');
 		  }
 		  if (this.keyPresses.left) {
@@ -361,67 +389,71 @@ let Client = function(context, w, h) {
 		  
 		  if (this.keyPresses.jump){
 			  inputs.push('jump');
-		  }
+		  }*/
 		  
-  		if (inputs.length > 0){
+  		//if (inputs.length > 0){
   			this.inputSeq += 1;
-  			this.inputs.push ({inputs:inputs, time:this.localTime.fixed(3)});
+  			this.localPlayer.inputs.push ({keyPresses:this.keyPresses, time:this.localTime.fixed(3), seq:this.inputSeq});
 			
-  			let serverPacket = inputs.join("-") + ".";
+  			/*let serverPacket = inputs.join("-") + ".";
   			serverPacket += this.localTime.toFixed(3).replace('.', '-') + '.';
-  			serverPacket += this.inputSeq;
+  			serverPacket += this.inputSeq;*/
 			
-  			this.socket.emit ("input", serverPacket); 
-  		}
+  			//this.socket.emit ("input", {keyPresses:this.keyPresses, time:this.localTime.fixed(3), seq:this.inputSeq}); 
+			//}
 	  };
 	  
 	  Client.prototype.onKeyDown = function (event) {
   		if (event.keyCode === 68 || event.keyCode == 39) {// d
-			this.keyPresses.right = true;
+			this.localPlayer.keyPresses.right = true;
 			
   			//this.socket.emit ("keyPress", { inputId :'right', state : true });
   		}
   		if (event.keyCode === 83){ // s
-			this.keyPresses.down = true;
+			this.localPlayer.keyPresses.down = true;
   			//this.socket.emit ("keyPress", { inputId :'down', state : true });
   		}
   		if (event.keyCode === 65 || event.keyCode == 37) {// a
-			this.keyPresses.left = true;
+			this.localPlayer.keyPresses.left = true;
   			//this.socket.emit ("keyPress", { inputId :'left', state : true });
   		}
   		if (event.keyCode === 87 || event.keyCode == 38) { // w
-			this.keyPresses.up = true;
+			this.localPlayer.keyPresses.up = true;
   			//this.socket.emit ("keyPress", { inputId : 'up', state : true });
   		}
   		if (event.keyCode == 32) {
-			this.keyPresses.jump = true;
-  			//this.socket.emit ("keyPress", { inputId : 'space', state : true });
+			this.localPlayer.keyPresses.jump = true;
+  			//this.socket.emit ("keyPress", { inputId : 'jump', state : true });
   		}
 		
   		if (event.keyCode == 18) {
-			this.keyPresses.fire = true;
+			this.localPlayer.keyPresses.fire = true;
   			//this.socket.emit ("keyPress", { inputId : 'fire', state : true });
 		}
+		
+		this.socket.emit ("keyPress", { keys:this.localPlayer.keyPresses, time:new Date().getTime() });
 	  };
 	  
   	Client.prototype.onKeyUp = function (event) {
   		if (event.keyCode === 68 || event.keyCode == 39) // d
-			this.keyPresses.right = false;
+			this.localPlayer.keyPresses.right = false;
   			//this.socket.emit ("keyPress", { inputId :'right', state : false, time:Date.now () });
   		if (event.keyCode === 83) // s
-			this.keyPresses.down = false;
-  		//	this.socket.emit ("keyPress", { inputId :'down', state : false, time:Date.now () });
+			this.localPlayer.keyPresses.down = false;
+  			//this.socket.emit ("keyPress", { inputId :'down', state : false, time:Date.now () });
   		if (event.keyCode === 65 || event.keyCode == 37) // a
-			this.keyPresses.left = false;
-  		//	this.socket.emit ("keyPress", { inputId :'left', state : false, time:Date.now ()  });
+			this.localPlayer.keyPresses.left = false;
+  			//this.socket.emit ("keyPress", { inputId :'left', state : false, time:Date.now ()  });
   		if (event.keyCode === 87) // w
-			this.keyPresses.up = false;
+			this.localPlayer.keyPresses.up = false;
   			//this.socket.emit ("keyPress", { inputId : 'up', state : false, time:Date.now ()  });
   		if (event.keyCode == 32 || event.keyCode == 38) 
-			this.keyPresses.jump = false;
-  			//this.socket.emit ("keyPress", { inputId : 'space', state : false, time:Date.now ()  });
+			this.localPlayer.keyPresses.jump = false;
+  			//this.socket.emit ("keyPress", { inputId : 'jump', state : false, time:Date.now ()  });
   		if (event.keyCode == 18) 
-			this.keyPresses.fire = false;
+			this.localPlayer.keyPresses.fire = false;
   			//this.socket.emit ("keyPress", { inputId : 'fire', state : false, time:Date.now ()  });
+			
+		this.socket.emit ("keyPress", { keys:this.localPlayer.keyPresses, time:new Date().getTime() });
   	};
 	
