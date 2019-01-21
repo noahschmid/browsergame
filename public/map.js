@@ -193,7 +193,7 @@ if ( 'undefined' != typeof global ) {
 	};
 	
 	MapController.prototype.getTileMetaByIndex = function(x,y) {
-		if (x < 0 || y < 0 || x >= this.mapWidth || y >= this.mapHeight)
+		if (x < 0 || y < 0 || x >= this.map[0].length || y >= this.map[0][0].length || typeof this.map[0][x] == 'undefined' || typeof this.map[0][x][y] == 'undefined')
 			return null;
 
 		return { type:this.map[0][x][y], top:y*this.tileSize, bottom:(y+1)*this.tileSize, 

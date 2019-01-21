@@ -63,7 +63,8 @@ let Player = function (id, map){
 
             //Our local history of inputs
         this.inputs = [];
-		this.inputSeq = 0;
+		this.name = "Player[" + id + "]";
+		this.stateTime = new Date().getTime();
 };
 
 if ( 'undefined' != typeof global ) {

@@ -1,5 +1,7 @@
 let Client = function(context, w, h) {
 	GameCore.prototype.constructor.call(this);
+	
+	this.id = 0;
 		
 		this.offsetX = 0;
 		this.offsetY = 0;
@@ -38,6 +40,8 @@ let Client = function(context, w, h) {
 		this.messages = [];
 		this.keyEvent = false;
 		
+		this.lastProcessedSequence = -1;
+		
 		this.keyPresses = { left:false, right:false, up:false, down:false, fire:false, jump:false };
 		
 		this.canvas.addEventListener('click', function(evt) {
@@ -50,7 +54,7 @@ let Client = function(context, w, h) {
 		}.bind(this));
 		
 		this.serverUpdates = [];
-		this.pendingUpdates = [];
+		this.unprocessedUpdates = [];
 		
 		document.onkeydown = function (event) { this.onKeyDown(event) }.bind(this);
 		document.onkeyup = function (event) { this.onKeyUp(event) }.bind(this);
@@ -87,43 +91,45 @@ let Client = function(context, w, h) {
 	};
 	
 	Client.prototype.onServerUpdateReceived = function(data) {
-		this.players = [];
-		
-		for (let i in data.players) {
-			if (typeof data.players[i] == 'undefined')
-				continue;
+		for (let i in this.players) {
+			let player = data.players[this.players[i].playerId];
 			
-			let player = data.players[i];
-			player.map = this.map;
-			Object.setPrototypeOf(player, Player.prototype);
-			this.players.push(player);
+			this.players[i].position = player.position;
+			this.players[i].velocity = player.velocity;
+			this.players[i].animPhase = player.animPhase;
+			this.players[i].facingLeft = player.facingLeft;
 			
-			if (player.playerId == this.localPlayer.playerId) {
-				
+			if (player.id == this.id) {
 				this.localPlayer.position = player.position;
+				this.localPlayer.velocity = player.velocity;
+				this.localPlayer.facingLeft = player.facingLeft;
+				this.localPlayer.animPhase = player.animPhase;
 				
 				let j = 0;
-				while (j < this.pendingUpdates.length) {
-					let update = this.pendingUpdates[j];
-					if (player.inputSeq <= update.inputSeq) {
-						this.pendingUpdates.splice(j, 1);
+				while (j < this.unprocessedUpdates.length) {
+					let update = this.unprocessedUpdates[j];
+					
+					if (update.seq <= player.seq) {
+						this.unprocessedUpdates.splice(j, 1);
 					} else {
 						this.applyUpdate(j);
 						j++;
 					}
 				}
-				
-				this.pendingUpdates = [];
 			}
 		}
 	};
 	
-	Client.prototype.applyUpdate = function(j) {
-		let delta = this.deltaTime;
-		if (j+1 < this.pendingUpdates.length)
-			delta = this.pendingUpdates[j+1].time - this.pendingUpdates[j].time;
+	Client.prototype.applyUpdate = function (j) {
+		let delta = 0;
+		let update = this.unprocessedUpdates[j];
 		
-		this.localPlayer.keyPresses = this.pendingUpdates[j].keys;
+		if (j+1 < this.unprocessedUpdates.length)
+			delta = (this.unprocessedUpdates[j+1].time - update.time) / 1000;
+		else
+			delta = this.physicsDelta;
+		
+		this.localPlayer.keyPresses = update.keyPresses;
 		this.localPlayer.updatePosition(delta);
 	};
 	
@@ -152,18 +158,24 @@ let Client = function(context, w, h) {
 		this.map.mapHeight = data.mapHeight;
 		
 		this.players = [];
+		this.id = data.id;
 		
 		for (let i in data.players) {
 			if (typeof data.players[i] == 'undefined')
 				continue;
+			else {
+				let player = data.players[i];
+				Object.setPrototypeOf(player, Player.prototype);
+				player.map = this.map.map;
 			
-			let player = data.players[i];
-			Object.setPrototypeOf(player, Player.prototype);
-			player.map = this.map;
-			this.players.push(player);
+				if (player.playerId == data.id) {
+					this.localPlayer = new Player(data.id);
+					this.localPlayer.position = player.position;
+					this.localPlayer.map = this.map;
+					player.name = "[GHOST]";
+				}
 			
-			if (player.playerId == data.id) {
-				this.localPlayer = player;
+				this.players.push(player);
 			}
 		}
 		
@@ -256,7 +268,7 @@ let Client = function(context, w, h) {
 	
 	Client.prototype.render = function() {
 		for (let i in this.players) {
-			if (this.players[i].playerId != this.localPlayer.playerId)
+			if (this.players[i].playerId != this.id)
 				this.drawPlayer(this.players[i]);
 		}
 		
@@ -317,7 +329,7 @@ let Client = function(context, w, h) {
 			this.context.fillStyle = "red";
 		}
 		
-		this.context.fillText ("player[" + player.playerId + "]", player.position.x - this.map.offsetX + 32, player.position.y - this.map.offsetY - 15);
+		this.context.fillText (player.name, player.position.x - this.map.offsetX + 32, player.position.y - this.map.offsetY - 15);
 	};
 	
 	Client.prototype.drawDebugGUI = function() {
@@ -392,9 +404,10 @@ let Client = function(context, w, h) {
 		
   		this.inputSeq += 1;
 		this.localPlayer.keyPresses = this.keyPresses;
-  		this.localPlayer.inputs.push ({keyPresses:this.keyPresses, time:this.localTime.fixed(3), seq:this.inputSeq});
-		this.pendingUpdates.push ({keyPresses:this.keyPresses, time:this.localTime.fixed(3), seq:this.inputSeq});
-		this.socket.emit ("keyPress", { keys:this.keyPresses, time:new Date().getTime(), seq:this.inputSeq });
+  		//this.localPlayer.inputs.push ({keyPresses:this.keyPresses, time:this.localTime.fixed(3), seq:this.inputSeq});
+		this.unprocessedUpdates.push ({ keyPresses:this.keyPresses, time:new Date().getTime(), seq:this.inputSeq });
+			
+		this.socket.emit ("keyPress", { keyPresses:this.keyPresses, time:new Date().getTime(), seq:this.inputSeq });
 		this.keyEvent = false;
 	};
 	  

@@ -73,38 +73,22 @@ Server.prototype.startListening = function(binder) {
 		}
 		
 		client.on("keyPress", function(event) {
-			this.players[client.userid].keyPresses = event.keys;
-			this.players[client.userid].inputs.push(event);
-			this.players[client.userid].inputSeq = event.seq;/*
-			//this.inputList.push ({ id:client.userid, input:event.inputId, state:event.state, time:inputTime, sec:inputSec });
-			if (event.inputId == 'right') 
-				this.players[client.userid].keyPresses.right = event.state;
-			if (event.inputId == 'left')
-				this.players[client.userid].keyPresses.left = event.state;
-			if (event.inputId == 'up')
-				this.players[client.userid].keyPresses.up = event.state;
-			if (event.inputId =='down')
-				this.players[client.userid].keyPresses.down = event.state;
-			if (event.inputId == 'jump') {
-				this.players[client.userid].keyPresses.jump = event.state;
-				if (!event.state) {
-					this.players[client.userid].canJump = true;
-				}
-			}
-			if (event.inputId == 'fire') {
-				this.players[client.userid].keyPresses.fire = event.state;
-				/*if (event.state)
-					this.players[client.userid].respawn(mainMap.getStartPosition(0));
-			}*/
-		}.bind(binder));
-		
-		client.on("input", function(data) {
-			/*let parts = data.split('.');
-	        let commands = parts[0].split('-');
-	        let time = parts[1].replace('-','.');
-	        let seq = parts[2];*/
+			if (typeof this.players[client.userid] == 'undefined')
+				return;
 			
-			this.handleInputs(data.keyPresses, data.time, data.seq, client.userid);
+			let delta = (event.time - this.players[client.userid].stateTime) / 1000;
+			
+			if (typeof this.players[client.userid].inputs.keyPresses != 'undefined')
+				this.players[client.userid].keyPresses = this.players[client.userid].inputs.keyPresses;
+			
+			/*for (let i = 0; i < Math.floor(delta/this.physicsDelta); i++)
+				this.players[client.userid].updatePosition(this.physicsDelta);*/
+			
+			this.players[client.userid].updatePosition(delta);
+			
+			this.players[client.userid].inputs = event;
+			this.players[client.userid].stateTime = event.time;
+			
 		}.bind(binder));
 		
 		client.on('p', function(data) {
@@ -145,7 +129,7 @@ Server.prototype.mainUpdate = function(){
 		if (typeof this.players[i] == 'undefined')
 			continue;
 		let player = this.players[i];
-		pack.push ( player );
+		pack.push ( { id: player.playerId, position:player.position, velocity: player.velocity, animPhase: player.animPhase, facingLeft: player.facingLeft, seq: player.inputs.seq} );
 	}
 	
 	this.lastState = { players:pack, time:this.localTime };
@@ -173,12 +157,12 @@ Server.prototype.updatePhysics = function() {
 	for (let i in this.players) {
 		let player = this.players[i];
 		
-		/*for (let a in player.inputs) {
+		/*while (player.inputs.length > 1) {
 			player.handleInputs(a);
 			player.updatePosition(this.physicsDelta);
-		}*/
+		}
 		
-		player.updatePosition(this.physicsDelta);
+		player.updatePosition(this.physicsDelta);*/
 		//player.inputs = [];
 	}
 };
