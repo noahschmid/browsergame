@@ -9,7 +9,9 @@ let Client = function(context, w, h) {
 		this.players = [];
 		this.bullets = {};
 		
-		this.debugMode = false;
+		this.collisionBoxes = false;
+		this.playerGhost = false;
+		this.reconciliation = false;
 		
 		this.map = new MapController(w, h);
 		this.canvas = canvas;
@@ -34,7 +36,10 @@ let Client = function(context, w, h) {
 		this.netPing = 2;
 		this.netLatency = 1;
 		
-		this.debugButton = { x:10, y:10, w:70, h:20, text:"debug OFF" };
+		this.collisionButton = { x:10, y:10, w:150, h:20, text:"collision boxes OFF" };
+		this.ghostButton = { x:170, y:10, w:150, h:20, text:"player ghost OFF" };
+		this.serverRecButton = { x:330, y:10, w:150, h:20, text:"server rec OFF" };
+		
 		this.inputSeq = 0;
 		
 		this.messages = [];
@@ -47,9 +52,19 @@ let Client = function(context, w, h) {
 		this.canvas.addEventListener('click', function(evt) {
 		    let mousePos = this.getMousePos(evt);
 
-		    if (this.isInside(mousePos,this.debugButton)) {
-				this.debugMode = !this.debugMode;
-		        this.debugButton.text = this.debugMode ? "debug ON" : "debug OFF";
+		    if (this.isInside(mousePos,this.collisionButton)) {
+				this.collisionBoxes = !this.collisionBoxes;
+		        this.collisionButton.text = this.collisionBoxes ? "collision boxes ON" : "collision boxes OFF";
+		    }
+			
+		    if (this.isInside(mousePos,this.ghostButton)) {
+				this.playerGhost = !this.playerGhost;
+		        this.ghostButton.text = this.playerGhost ? "player ghost ON" : "player ghost OFF";
+		    }
+			
+		    if (this.isInside(mousePos,this.serverRecButton)) {
+				this.reconciliation = !this.reconciliation;
+		        this.serverRecButton.text = this.reconciliation ? "server rec ON" : "server rec OFF";
 		    }
 		}.bind(this));
 		
@@ -99,7 +114,7 @@ let Client = function(context, w, h) {
 			this.players[i].animPhase = player.animPhase;
 			this.players[i].facingLeft = player.facingLeft;
 			
-			if (player.id == this.id) {
+			if (player.id == this.id && this.reconciliation) {
 				this.localPlayer.position = player.position;
 				this.localPlayer.velocity = player.velocity;
 				this.localPlayer.facingLeft = player.facingLeft;
@@ -109,7 +124,7 @@ let Client = function(context, w, h) {
 				while (j < this.unprocessedUpdates.length) {
 					let update = this.unprocessedUpdates[j];
 					
-					if (update.seq <= player.seq) {
+					if (update.seq = player.seq) {
 						this.unprocessedUpdates.splice(j, 1);
 					} else {
 						this.applyUpdate(j);
@@ -141,10 +156,10 @@ let Client = function(context, w, h) {
 		this.context.textAlign = "left";
 		this.context.font = "13px Arial";
 		this.context.textBaseLine = "middle";
-		this.context.fillText("ping: " + this.netPing + "ms", this.debugButton.x, this.debugButton.y + this.debugButton.h + 15);
+		this.context.fillText("ping: " + this.netPing + "ms", this.collisionButton.x, this.collisionButton.y + this.collisionButton.h + 15);
 		
 		for (let i in this.messages) {
-			this.context.fillText(this.messages[i].msg, this.debugButton.x, this.debugButton.y + this.debugButton.h + 30 + 15 * i);
+			this.context.fillText(this.messages[i].msg, this.collisionButton.x, this.collisionButton.y + this.collisionButton.h + 30 + 15 * i);
 			if (new Date().getTime() - this.messages[i].time > 5000)
 				this.messages.splice(i, 1);
 		}
@@ -268,15 +283,17 @@ let Client = function(context, w, h) {
 	
 	Client.prototype.render = function() {
 		for (let i in this.players) {
-			if (this.players[i].playerId != this.id)
+			if (this.players[i].playerId != this.id || this.playerGhost)
 				this.drawPlayer(this.players[i]);
 		}
 		
 		this.drawPlayer(this.localPlayer);
 		
-		this.drawButton(this.debugButton);
+		this.drawButton(this.ghostButton);
+		this.drawButton(this.collisionButton);
+		this.drawButton(this.serverRecButton);
 		
-		if (this.debugMode)
+		if (this.collisionBoxes)
 			this.drawDebugGUI();
 		
 		this.context.font = "14px Arial";
