@@ -49,6 +49,8 @@ let Client = function(context, w, h) {
 		
 		this.keyPresses = { left:false, right:false, up:false, down:false, fire:false, jump:false };
 		
+		this.localGhost = {};
+		
 		this.canvas.addEventListener('click', function(evt) {
 		    let mousePos = this.getMousePos(evt);
 
@@ -116,18 +118,16 @@ let Client = function(context, w, h) {
 			
 			
 			if (player.id == this.id && this.reconciliation) {
-				this.localPlayer.position.x = player.position.x;
-				this.localPlayer.position.y = player.position.y;
-				this.localPlayer.velocity.x = player.velocity.x;
-				this.localPlayer.velocity.y = player.velocity.y;
-				this.localPlayer.facingLeft = player.facingLeft;
-				this.localPlayer.animPhase = player.animPhase;
+				this.localGhost.position.x = player.position.x;
+				this.localGhost.position.y = player.position.y;
+				this.localGhost.velocity.x = player.velocity.x;
+				this.localGhost.velocity.y = player.velocity.y;
+				this.localGhost.facingLeft = player.facingLeft;
+				this.localGhost.animPhase = player.animPhase;
 				
 				let j = 0;
-				console.log (this.unprocessedUpdates.length);
 				while (j < this.unprocessedUpdates.length) {
 					let update = this.unprocessedUpdates[j];
-					console.log (update.seq + " " + player.seq);
 					
 					if (update.seq <= player.seq) {
 						this.unprocessedUpdates.splice(j, 1);
@@ -151,10 +151,8 @@ let Client = function(context, w, h) {
 		else
 			delta = this.physicsDelta;
 		
-		this.localPlayer.keyPresses = update.keyPresses;
-		this.localPlayer.updatePosition(update.physicsDelta);
-		
-		console.log ("delta: " + delta + " physicsDelta: " + update.physicsDelta);
+		this.localGhost.keyPresses = update.keyPresses;
+		this.localGhost.updatePosition(update.physicsDelta);
 	};
 	
 	Client.prototype.addMessage = function(msg) {
@@ -196,7 +194,13 @@ let Client = function(context, w, h) {
 					this.localPlayer = new Player(data.id);
 					this.localPlayer.position = player.position;
 					this.localPlayer.map = this.map;
-					player.name = "[GHOST]";
+					
+					this.localGhost = new Player(55);
+					this.localGhost.position = player.position;
+					this.localGhost.map = this.map;
+					this.localGhost.name = "[LOCAL GHOST]"
+					
+					player.name = "[SERVER GHOST]";
 				}
 			
 				this.players.push(player);
@@ -303,8 +307,8 @@ let Client = function(context, w, h) {
 		
 		this.drawPlayer(this.localPlayer);
 		
-		this.drawPlayer(this.dummy1);
-		this.drawPlayer(this.dummy2);
+		if (this.playerGhost)
+			this.drawPlayer(this.localGhost);
 		
 		this.drawButton(this.ghostButton);
 		this.drawButton(this.collisionButton);
