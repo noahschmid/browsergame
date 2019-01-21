@@ -16,11 +16,6 @@ let Server = function () {
 	this.map = new MapController();
 	
 	this.inputList = [];
-	
-	this.dummy1 = {};
-	this.dummy2 = {};
-	
-	this.dummyTest = false;
 };
 
 Server.prototype = new GameCore();
@@ -96,25 +91,6 @@ Server.prototype.startListening = function(binder) {
 			
 		}.bind(binder));
 		
-		client.on("dummyTest", function() {
-			this.dummyTest = !this.dummyTest;
-			
-			if (!this.dummyTest)
-				return;
-			
-			console.log("dummy test started.");
-			
-			this.dummy1 = new Player(55, this.map);
-			this.dummy2 = new Player(56, this.map);
-			
-			this.dummy1.name = "[DUMMY 1]";
-			this.dummy1.keyPresses = { left:false, right:true, up:false, down:false, jump:false, fire:false };
-			
-			this.dummy2.name = "[DUMMY 2]";
-			this.dummy2.keyPresses = { left:false, right:true, up:false, down:false, jump:false, fire:false };
-			
-		}.bind(binder));
-		
 		client.on('p', function(data) {
 			client.emit ('p', data);
 		});
@@ -172,8 +148,6 @@ Server.prototype.mainUpdate = function(){
 		let client = this.clients[e];
 		client.emit ('serverupdate', this.lastState);
 		//client.emit ('bulletList', BULLETS);
-		if (this.dummyTest)
-			client.emit ('dummies', { dummy1:this.dummy1.position, dummy2:this.dummy2.position } );
 	}
 	
 	
@@ -181,11 +155,6 @@ Server.prototype.mainUpdate = function(){
 
 Server.prototype.updatePhysics = function() {
 	GameCore.prototype.updatePhysics.apply(this);
-	
-	if (this.dummyTest) {
-		this.dummy1.updatePosition(this.physicsDelta);
-		this.dummy2.updatePosition(this.physicsDelta);
-	}
 
 	for (let i in this.players) {
 		let player = this.players[i];

@@ -153,7 +153,7 @@ let Client = function(context, w, h) {
 			delta = this.physicsDelta;
 		
 		this.localPlayer.keyPresses = update.keyPresses;
-		this.localPlayer.updatePosition(delta);
+		this.localPlayer.updatePosition(update.physicsDelta);
 		
 		console.log ("delta: " + delta + " physicsDelta: " + update.physicsDelta);
 	};
