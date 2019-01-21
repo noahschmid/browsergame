@@ -192,7 +192,8 @@ let Client = function(context, w, h) {
 			
 				if (player.playerId == data.id) {
 					this.localPlayer = new Player(data.id);
-					this.localPlayer.position = player.position;
+					this.localPlayer.position.x = player.position.x;
+					this.localPlayer.position.y = player.position.y;
 					this.localPlayer.map = this.map;
 					
 					this.localGhost = new Player(55);
