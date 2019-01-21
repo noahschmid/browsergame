@@ -114,6 +114,7 @@ let Client = function(context, w, h) {
 			this.players[i].animPhase = player.animPhase;
 			this.players[i].facingLeft = player.facingLeft;
 			
+			
 			if (player.id == this.id && this.reconciliation) {
 				this.localPlayer.position.x = player.position.x;
 				this.localPlayer.position.y = player.position.y;
@@ -126,9 +127,11 @@ let Client = function(context, w, h) {
 				console.log (this.unprocessedUpdates.length);
 				while (j < this.unprocessedUpdates.length) {
 					let update = this.unprocessedUpdates[j];
+					console.log (update.seq + " " + player.seq);
 					
 					if (update.seq <= player.seq) {
 						this.unprocessedUpdates.splice(j, 1);
+						
 					} else {
 						this.applyUpdate(j);
 						j++;
