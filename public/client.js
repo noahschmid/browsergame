@@ -39,7 +39,6 @@ let Client = function(context, w, h) {
 		this.collisionButton = { x:10, y:10, w:150, h:20, text:"collision boxes OFF" };
 		this.ghostButton = { x:170, y:10, w:150, h:20, text:"player ghost OFF" };
 		this.serverRecButton = { x:330, y:10, w:150, h:20, text:"server rec OFF" };
-		this.dummyTestButton = { x:500, y:10, w:150, h:20, text:"dummy test" };
 		
 		this.inputSeq = 0;
 		
@@ -47,9 +46,6 @@ let Client = function(context, w, h) {
 		this.keyEvent = false;
 		
 		this.lastProcessedSequence = -1;
-		
-		this.dummy1 = new Player(55);
-		this.dummy2 = new Player(56);
 		
 		this.keyPresses = { left:false, right:false, up:false, down:false, fire:false, jump:false };
 		
@@ -69,10 +65,6 @@ let Client = function(context, w, h) {
 		    if (this.isInside(mousePos,this.serverRecButton)) {
 				this.reconciliation = !this.reconciliation;
 		        this.serverRecButton.text = this.reconciliation ? "server rec ON" : "server rec OFF";
-		    }
-			
-		    if (this.isInside(mousePos,this.dummyTestButton)) {
-				this.socket.emit ("dummyTest");
 		    }
 		}.bind(this));
 		
@@ -127,8 +119,9 @@ let Client = function(context, w, h) {
 				this.localPlayer.velocity = player.velocity;
 				this.localPlayer.facingLeft = player.facingLeft;
 				this.localPlayer.animPhase = player.animPhase;
-				console.log ("asda");
+				
 				let j = 0;
+				console.log (this.unprocessedUpdates.length);
 				while (j < this.unprocessedUpdates.length) {
 					let update = this.unprocessedUpdates[j];
 					
@@ -146,6 +139,7 @@ let Client = function(context, w, h) {
 	Client.prototype.applyUpdate = function (j) {
 		let delta = 0;
 		let update = this.unprocessedUpdates[j];
+		
 		
 		if (j+1 < this.unprocessedUpdates.length)
 			delta = (this.unprocessedUpdates[j+1].time - update.time) / 1000;
@@ -310,7 +304,6 @@ let Client = function(context, w, h) {
 		this.drawButton(this.ghostButton);
 		this.drawButton(this.collisionButton);
 		this.drawButton(this.serverRecButton);
-		this.drawButton(this.dummyTestButton);
 		
 		if (this.collisionBoxes)
 			this.drawDebugGUI();
@@ -325,7 +318,6 @@ let Client = function(context, w, h) {
 	
 	Client.prototype.drawPlayer = function(player) {
 		if (typeof player == 'undefined') {
-			console.log(player);
 			return;
 		}
 		

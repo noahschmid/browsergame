@@ -118,7 +118,6 @@ if ( 'undefined' != typeof global ) {
 				this.velocity.y = -JUMP_SPEED;
 				this.jumpsLeft = this.jumpsLeft == 0 ? 1 : 0;
 				this.jumpCoolOff = false;
-				console.log(this.jumpsLeft);
 			}
 		} else if (!this.keyPresses.jump)
 			this.jumpCoolOff = true;
