@@ -39,6 +39,7 @@ let Client = function(context, w, h) {
 		this.collisionButton = { x:10, y:10, w:150, h:20, text:"collision boxes OFF" };
 		this.ghostButton = { x:170, y:10, w:150, h:20, text:"player ghost OFF" };
 		this.serverRecButton = { x:330, y:10, w:150, h:20, text:"server rec OFF" };
+		this.dummyTestButton = { x:500, y:10, w:150, h:20, text:"dummy test" };
 		
 		this.inputSeq = 0;
 		
@@ -46,6 +47,9 @@ let Client = function(context, w, h) {
 		this.keyEvent = false;
 		
 		this.lastProcessedSequence = -1;
+		
+		this.dummy1 = new Player(55);
+		this.dummy2 = new Player(56);
 		
 		this.keyPresses = { left:false, right:false, up:false, down:false, fire:false, jump:false };
 		
@@ -65,6 +69,10 @@ let Client = function(context, w, h) {
 		    if (this.isInside(mousePos,this.serverRecButton)) {
 				this.reconciliation = !this.reconciliation;
 		        this.serverRecButton.text = this.reconciliation ? "server rec ON" : "server rec OFF";
+		    }
+			
+		    if (this.isInside(mousePos,this.dummyTestButton)) {
+				this.socket.emit ("dummyTest");
 		    }
 		}.bind(this));
 		
@@ -119,12 +127,12 @@ let Client = function(context, w, h) {
 				this.localPlayer.velocity = player.velocity;
 				this.localPlayer.facingLeft = player.facingLeft;
 				this.localPlayer.animPhase = player.animPhase;
-				
+				console.log ("asda");
 				let j = 0;
 				while (j < this.unprocessedUpdates.length) {
 					let update = this.unprocessedUpdates[j];
 					
-					if (update.seq = player.seq) {
+					if (update.seq <= player.seq) {
 						this.unprocessedUpdates.splice(j, 1);
 					} else {
 						this.applyUpdate(j);
@@ -146,6 +154,8 @@ let Client = function(context, w, h) {
 		
 		this.localPlayer.keyPresses = update.keyPresses;
 		this.localPlayer.updatePosition(delta);
+		
+		console.log ("delta: " + delta + " physicsDelta: " + update.physicsDelta);
 	};
 	
 	Client.prototype.addMessage = function(msg) {
@@ -258,6 +268,11 @@ let Client = function(context, w, h) {
 			
 			this.socket.on('onplayerleft', this.onPlayerLeft.bind(this));
 			
+			this.socket.on('dummies', function(dummies) { 
+				this.dummy1.position = dummies.dummy1;
+				this.dummy2.position = dummies.dummy2;
+			}.bind(this));
+			
 			this.startPingTimer();
 
 	};	
@@ -289,9 +304,13 @@ let Client = function(context, w, h) {
 		
 		this.drawPlayer(this.localPlayer);
 		
+		this.drawPlayer(this.dummy1);
+		this.drawPlayer(this.dummy2);
+		
 		this.drawButton(this.ghostButton);
 		this.drawButton(this.collisionButton);
 		this.drawButton(this.serverRecButton);
+		this.drawButton(this.dummyTestButton);
 		
 		if (this.collisionBoxes)
 			this.drawDebugGUI();
@@ -422,9 +441,9 @@ let Client = function(context, w, h) {
   		this.inputSeq += 1;
 		this.localPlayer.keyPresses = this.keyPresses;
   		//this.localPlayer.inputs.push ({keyPresses:this.keyPresses, time:this.localTime.fixed(3), seq:this.inputSeq});
-		this.unprocessedUpdates.push ({ keyPresses:this.keyPresses, time:new Date().getTime(), seq:this.inputSeq });
+		this.unprocessedUpdates.push ({ keyPresses:this.keyPresses, time:new Date().getTime(), seq:this.inputSeq, physicsDelta:this.physicsDelta });
 			
-		this.socket.emit ("keyPress", { keyPresses:this.keyPresses, time:new Date().getTime(), seq:this.inputSeq });
+		this.socket.emit ("keyPress", { keyPresses:this.keyPresses, time:new Date().getTime(), seq:this.inputSeq, physicsDelta:this.physicsDelta });
 		this.keyEvent = false;
 	};
 	  
