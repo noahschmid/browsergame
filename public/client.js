@@ -124,8 +124,12 @@ let Client = function(context, w, h) {
 				this.localGhost.velocity.y = player.velocity.y;
 				this.localGhost.facingLeft = player.facingLeft;
 				this.localGhost.animPhase = player.animPhase;
+				this.localGhost.seq = player.seq;
 				
 				let j = 0;
+				if (typeof this.unprocessedUpdates[this.unprocessedUpdates.length-1] != 'undefined')
+					console.log ("ghost seq: " + this.localGhost.seq + " player seq: " + this.unprocessedUpdates[this.unprocessedUpdates.length-1].seq);
+				
 				while (j < this.unprocessedUpdates.length) {
 					let update = this.unprocessedUpdates[j];
 					
@@ -137,9 +141,6 @@ let Client = function(context, w, h) {
 						j++;
 					}
 				}
-				
-				if (typeof this.unprocessedUpdates[this.unprocessedUpdates.length-1] != 'undefined')
-					console.log ("ghost seq: " + this.localGhost.seq + " player seq: " + this.unprocessedUpdates[this.unprocessedUpdates.length-1].seq);
 			}
 		}
 	};
@@ -300,8 +301,8 @@ let Client = function(context, w, h) {
 		GameCore.prototype.updatePhysics.apply(this);
 		if (this.state == 'connected') {
 			this.handleInputs();
-			this.localPlayer.updatePosition(this.physicsDelta);
 			this.unprocessedUpdates.push ({ keyPresses:this.keyPresses, time:new Date().getTime(), seq:this.inputSeq, physicsDelta:this.physicsDelta });
+			this.localPlayer.updatePosition(this.physicsDelta);
 		}
 	};
 	
@@ -311,7 +312,7 @@ let Client = function(context, w, h) {
 				this.drawPlayer(this.players[i]);
 		}
 		
-		this.drawPlayer(this.localPlayer);
+		//this.drawPlayer(this.localPlayer);
 		
 		if (this.playerGhost)
 			this.drawPlayer(this.localGhost);
