@@ -297,6 +297,7 @@ let Client = function(context, w, h) {
 		if (this.state == 'connected') {
 			this.handleInputs();
 			this.localPlayer.updatePosition(this.physicsDelta);
+			this.unprocessedUpdates.push ({ keyPresses:this.keyPresses, time:new Date().getTime(), seq:this.inputSeq, physicsDelta:this.physicsDelta });
 		}
 	};
 	
@@ -443,7 +444,6 @@ let Client = function(context, w, h) {
   		this.inputSeq += 1;
 		this.localPlayer.keyPresses = this.keyPresses;
   		//this.localPlayer.inputs.push ({keyPresses:this.keyPresses, time:this.localTime.fixed(3), seq:this.inputSeq});
-		this.unprocessedUpdates.push ({ keyPresses:this.keyPresses, time:new Date().getTime(), seq:this.inputSeq, physicsDelta:this.physicsDelta });
 			
 		this.socket.emit ("keyPress", { keyPresses:this.keyPresses, time:new Date().getTime(), seq:this.inputSeq, physicsDelta:this.physicsDelta });
 		this.keyEvent = false;
