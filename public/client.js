@@ -137,6 +137,9 @@ let Client = function(context, w, h) {
 						j++;
 					}
 				}
+				
+				if (typeof this.unprocessedUpdates[this.unprocessedUpdates.length-1] != 'undefined')
+					console.log ("ghost seq: " + this.localGhost.seq + " player seq: " + this.unprocessedUpdates[this.unprocessedUpdates.length-1].seq);
 			}
 		}
 	};
@@ -153,6 +156,7 @@ let Client = function(context, w, h) {
 		
 		this.localGhost.keyPresses = update.keyPresses;
 		this.localGhost.updatePosition(update.physicsDelta);
+		this.localGhost.seq = update.seq;
 	};
 	
 	Client.prototype.addMessage = function(msg) {
