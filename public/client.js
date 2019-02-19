@@ -118,10 +118,12 @@ let Client = function(context, w, h) {
 			
 			
 			if (player.id == this.id && this.reconciliation) {
-				this.localGhost.position = player.position;
-				this.localGhost.velocity = player.velocity;
-				this.localGhost.animPhase = player.animPhase;
-				this.localGhost.facingLeft = player.facingLeft;
+				this.localPlayer.position.x = player.position.x;
+				this.localPlayer.position.y = player.position.y;
+				this.localPlayer.velocity.x = player.velocity.x;
+				this.localPlayer.velocity.y = player.velocity.y;
+				this.localPlayer.animPhase = player.animPhase;
+				this.localPlayer.facingLeft = player.facingLeft;
 				
 				let j = 0;
 				
@@ -130,13 +132,11 @@ let Client = function(context, w, h) {
 					
 					if (update.seq <= player.seq) {
 						this.unprocessedUpdates.splice(j, 1);
-						
 					} else {
 						this.applyUpdate(j);
 						j++;
 					}
 				}
-				
 			}
 		}
 	};
@@ -145,9 +145,9 @@ let Client = function(context, w, h) {
 		let delta = 0;
 		let update = this.unprocessedUpdates[j];
 		
-		this.localGhost.keyPresses = update.keyPresses;
-		this.localGhost.updatePosition(update.physicsDelta);
-		this.localGhost.seq = update.seq;
+		this.localPlayer.keyPresses = update.keyPresses;
+		this.localPlayer.updatePosition(update.physicsDelta);
+		this.localPlayer.seq = update.seq;
 	};
 	
 	Client.prototype.addMessage = function(msg) {
