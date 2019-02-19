@@ -118,13 +118,7 @@ let Client = function(context, w, h) {
 			
 			
 			if (player.id == this.id && this.reconciliation) {
-				this.localGhost.position.x = player.position.x;
-				this.localGhost.position.y = player.position.y;
-				this.localGhost.velocity.x = player.velocity.x;
-				this.localGhost.velocity.y = player.velocity.y;
-				this.localGhost.facingLeft = player.facingLeft;
-				this.localGhost.animPhase = player.animPhase;
-				this.localGhost.seq = player.seq;
+				this.localGhost = this.players[i];
 				
 				let j = 0;
 				
