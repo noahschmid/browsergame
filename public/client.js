@@ -144,9 +144,10 @@ let Client = function(context, w, h) {
 		let update = this.unprocessedUpdates[j];
 		
 		this.localPlayer.keyPresses = update.keyPresses;
-		this.localPlayer.velocity = update.velocity;
 		this.localPlayer.updatePosition(update.physicsDelta);
 		this.localPlayer.seq = update.seq;
+		
+		console.log("update applied");
 	};
 	
 	Client.prototype.addMessage = function(msg) {
@@ -437,7 +438,7 @@ let Client = function(context, w, h) {
   		this.inputSeq++;
 		this.localPlayer.keyPresses = this.keyPresses;
   		//this.localPlayer.inputs.push ({keyPresses:this.keyPresses, time:this.localTime.fixed(3), seq:this.inputSeq});
-		this.unprocessedUpdates.push ({ keyPresses:this.keyPresses, time:new Date().getTime(), seq:this.inputSeq, physicsDelta:this.physicsDelta, velocity:this.localPlayer.velocity });
+		this.unprocessedUpdates.push ({ keyPresses:this.keyPresses, time:new Date().getTime(), seq:this.inputSeq, physicsDelta:this.physicsDelta });
 			
 		this.socket.emit ("keyPress", { keyPresses:this.keyPresses, time:new Date().getTime(), seq:this.inputSeq, physicsDelta:this.physicsDelta });
 		this.keyEvent = false;
