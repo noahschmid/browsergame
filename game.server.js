@@ -76,7 +76,7 @@ Server.prototype.startListening = function(binder) {
 			if (typeof this.players[client.userid] == 'undefined')
 				return;
 			
-			let delta = (event.time - this.players[client.userid].stateTime) / 1000;
+			//let delta = (event.time - this.players[client.userid].stateTime) / 1000;
 			
 			//if (typeof this.players[client.userid].inputs.keyPresses != 'undefined')
 			this.players[client.userid].keyPresses = event.keyPresses;

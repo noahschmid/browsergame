@@ -120,9 +120,10 @@ let Client = function(context, w, h) {
 			if (player.id == this.id && this.reconciliation) {
 				this.localGhost.position.x = player.position.x;
 				this.localGhost.position.y = player.position.y;
+				this.localGhost.velocity.x = player.velocity.x;
+				this.localGhost.velocity.y = player.velocity.y;
 				this.localGhost.animPhase = player.animPhase;
 				this.localGhost.facingLeft = player.facingLeft;
-				this.localGhost.seq = player.seq;
 				this.localGhost.lastPosition = player.lastPosition;
 				
 				let j = 0;
@@ -135,7 +136,6 @@ let Client = function(context, w, h) {
 					} else {
 						this.localGhost.keyPresses = update.keyPresses;
 						this.localGhost.updatePosition(update.physicsDelta);
-						this.localGhost.seq++;
 						j++;
 					}
 				}
@@ -284,7 +284,6 @@ let Client = function(context, w, h) {
 		GameCore.prototype.updatePhysics.apply(this);
 		if (this.state == 'connected') {
 			this.handleInputs();
-			this.localPlayer.updatePosition(this.physicsDelta);
 		}
 	};
 	
@@ -427,13 +426,16 @@ let Client = function(context, w, h) {
 	Client.prototype.handleInputs = function() {
 		//if (this.keyEvent == false)
 		//	return;
-		
-  		this.inputSeq++;
+		this.inputSeq++;
 		this.localPlayer.keyPresses = this.keyPresses;
+		
+		let delta = this.physicsDelta;
+		
   		//this.localPlayer.inputs.push ({keyPresses:this.keyPresses, time:this.localTime.fixed(3), seq:this.inputSeq});
-		this.unprocessedUpdates.push ({ keyPresses:this.keyPresses, time:new Date().getTime(), seq:this.inputSeq, physicsDelta:this.physicsDelta });
+		this.unprocessedUpdates.push ({ keyPresses:this.keyPresses, time:new Date().getTime(), seq:this.inputSeq, physicsDelta:delta, velocity:this.localPlayer.velocity, position:this.localPlayer.position, animPhase:this.localPlayer.animPhase });
+		this.localPlayer.updatePosition(delta);
 			
-		this.socket.emit ("keyPress", { keyPresses:this.keyPresses, time:new Date().getTime(), seq:this.inputSeq, physicsDelta:this.physicsDelta });
+		this.socket.emit ("keyPress", { keyPresses:this.keyPresses, time:new Date().getTime(), seq:this.inputSeq, physicsDelta:delta });
 		this.keyEvent = false;
 	};
 	  
