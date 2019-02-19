@@ -123,6 +123,7 @@ let Client = function(context, w, h) {
 				this.localGhost.animPhase = player.animPhase;
 				this.localGhost.facingLeft = player.facingLeft;
 				this.localGhost.seq = player.seq;
+				this.localGhost.lastPosition = player.lastPosition;
 				
 				let j = 0;
 				
@@ -135,7 +136,6 @@ let Client = function(context, w, h) {
 						this.localGhost.keyPresses = update.keyPresses;
 						this.localGhost.updatePosition(update.physicsDelta);
 						this.localGhost.seq++;
-						console.log ((this.localGhost.seq == this.inputSeq) ? "yes" : "no");
 						j++;
 					}
 				}
@@ -290,7 +290,7 @@ let Client = function(context, w, h) {
 	
 	Client.prototype.render = function() {
 		for (let i in this.players) {
-			if (this.players[i].playerId != this.id || this.playerGhost)
+			if (this.players[i].playerId != this.id)
 				this.drawPlayer(this.players[i]);
 		}
 		

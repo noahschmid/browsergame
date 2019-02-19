@@ -129,7 +129,7 @@ Server.prototype.mainUpdate = function(){
 		if (typeof this.players[i] == 'undefined')
 			continue;
 		let player = this.players[i];
-		pack.push ( { id: player.playerId, position:player.position, velocity: player.velocity, animPhase: player.animPhase, facingLeft: player.facingLeft, seq: player.inputs.seq} );
+		pack.push ( { id: player.playerId, position:player.position, lastPosition:player.lastPosition, velocity: player.velocity, animPhase: player.animPhase, facingLeft: player.facingLeft, seq: player.inputs.seq} );
 	}
 	
 	this.lastState = { players:pack, time:this.localTime };
