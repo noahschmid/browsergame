@@ -120,8 +120,6 @@ let Client = function(context, w, h) {
 			if (player.id == this.id && this.reconciliation) {
 				this.localPlayer.position.x = player.position.x;
 				this.localPlayer.position.y = player.position.y;
-				//this.localPlayer.velocity.x = player.velocity.x;
-				//this.localPlayer.velocity.y = player.velocity.y;
 				this.localPlayer.animPhase = player.animPhase;
 				this.localPlayer.facingLeft = player.facingLeft;
 				
@@ -146,6 +144,7 @@ let Client = function(context, w, h) {
 		let update = this.unprocessedUpdates[j];
 		
 		this.localPlayer.keyPresses = update.keyPresses;
+		this.localPlayer.velocity = update.velocity;
 		this.localPlayer.updatePosition(update.physicsDelta);
 		this.localPlayer.seq = update.seq;
 	};
@@ -438,7 +437,7 @@ let Client = function(context, w, h) {
   		this.inputSeq++;
 		this.localPlayer.keyPresses = this.keyPresses;
   		//this.localPlayer.inputs.push ({keyPresses:this.keyPresses, time:this.localTime.fixed(3), seq:this.inputSeq});
-		this.unprocessedUpdates.push ({ keyPresses:this.keyPresses, time:new Date().getTime(), seq:this.inputSeq, physicsDelta:this.physicsDelta });
+		this.unprocessedUpdates.push ({ keyPresses:this.keyPresses, time:new Date().getTime(), seq:this.inputSeq, physicsDelta:this.physicsDelta, velocity:this.localPlayer.velocity });
 			
 		this.socket.emit ("keyPress", { keyPresses:this.keyPresses, time:new Date().getTime(), seq:this.inputSeq, physicsDelta:this.physicsDelta });
 		this.keyEvent = false;
