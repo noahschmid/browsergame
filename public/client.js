@@ -122,6 +122,7 @@ let Client = function(context, w, h) {
 				this.localPlayer.position.y = player.position.y;
 				this.localPlayer.animPhase = player.animPhase;
 				this.localPlayer.facingLeft = player.facingLeft;
+				this.localPlayer.seq = player.seq;
 				
 				let j = 0;
 				
@@ -131,23 +132,14 @@ let Client = function(context, w, h) {
 					if (update.seq <= player.seq) {
 						this.unprocessedUpdates.splice(j, 1);
 					} else {
-						this.applyUpdate(j);
+						this.localPlayer.keyPresses = update.keyPresses;
+						this.localPlayer.updatePosition(update.physicsDelta);
+						this.localPlayer.seq++;
 						j++;
 					}
 				}
 			}
 		}
-	};
-	
-	Client.prototype.applyUpdate = function (j) {
-		let delta = 0;
-		let update = this.unprocessedUpdates[j];
-		
-		this.localPlayer.keyPresses = update.keyPresses;
-		this.localPlayer.updatePosition(update.physicsDelta);
-		this.localPlayer.seq = update.seq;
-		
-		console.log("update applied");
 	};
 	
 	Client.prototype.addMessage = function(msg) {
