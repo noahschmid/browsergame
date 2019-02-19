@@ -127,8 +127,6 @@ let Client = function(context, w, h) {
 				this.localGhost.seq = player.seq;
 				
 				let j = 0;
-				if (typeof this.unprocessedUpdates[this.unprocessedUpdates.length-1] != 'undefined')
-					console.log ("ghost seq: " + this.localGhost.seq + " player seq: " + this.unprocessedUpdates[this.unprocessedUpdates.length-1].seq);
 				
 				while (j < this.unprocessedUpdates.length) {
 					let update = this.unprocessedUpdates[j];
@@ -141,6 +139,7 @@ let Client = function(context, w, h) {
 						j++;
 					}
 				}
+				
 			}
 		}
 	};
@@ -148,12 +147,6 @@ let Client = function(context, w, h) {
 	Client.prototype.applyUpdate = function (j) {
 		let delta = 0;
 		let update = this.unprocessedUpdates[j];
-		
-		
-		if (j+1 < this.unprocessedUpdates.length)
-			delta = (this.unprocessedUpdates[j+1].time - update.time) / 1000;
-		else
-			delta = this.physicsDelta;
 		
 		this.localGhost.keyPresses = update.keyPresses;
 		this.localGhost.updatePosition(update.physicsDelta);
@@ -301,7 +294,6 @@ let Client = function(context, w, h) {
 		GameCore.prototype.updatePhysics.apply(this);
 		if (this.state == 'connected') {
 			this.handleInputs();
-			this.unprocessedUpdates.push ({ keyPresses:this.keyPresses, time:new Date().getTime(), seq:this.inputSeq, physicsDelta:this.physicsDelta });
 			this.localPlayer.updatePosition(this.physicsDelta);
 		}
 	};
@@ -312,7 +304,7 @@ let Client = function(context, w, h) {
 				this.drawPlayer(this.players[i]);
 		}
 		
-		//this.drawPlayer(this.localPlayer);
+		this.drawPlayer(this.localPlayer);
 		
 		if (this.playerGhost)
 			this.drawPlayer(this.localGhost);
@@ -446,9 +438,10 @@ let Client = function(context, w, h) {
 		//if (this.keyEvent == false)
 		//	return;
 		
-  		this.inputSeq += 1;
+  		this.inputSeq++;
 		this.localPlayer.keyPresses = this.keyPresses;
   		//this.localPlayer.inputs.push ({keyPresses:this.keyPresses, time:this.localTime.fixed(3), seq:this.inputSeq});
+		this.unprocessedUpdates.push ({ keyPresses:this.keyPresses, time:new Date().getTime(), seq:this.inputSeq, physicsDelta:this.physicsDelta });
 			
 		this.socket.emit ("keyPress", { keyPresses:this.keyPresses, time:new Date().getTime(), seq:this.inputSeq, physicsDelta:this.physicsDelta });
 		this.keyEvent = false;
