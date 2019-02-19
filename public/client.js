@@ -118,11 +118,11 @@ let Client = function(context, w, h) {
 			
 			
 			if (player.id == this.id && this.reconciliation) {
-				this.localPlayer.position.x = player.position.x;
-				this.localPlayer.position.y = player.position.y;
-				this.localPlayer.animPhase = player.animPhase;
-				this.localPlayer.facingLeft = player.facingLeft;
-				this.localPlayer.seq = player.seq;
+				this.localGhost.position.x = player.position.x;
+				this.localGhost.position.y = player.position.y;
+				this.localGhost.animPhase = player.animPhase;
+				this.localGhost.facingLeft = player.facingLeft;
+				this.localGhost.seq = player.seq;
 				
 				let j = 0;
 				
@@ -132,9 +132,10 @@ let Client = function(context, w, h) {
 					if (update.seq <= player.seq) {
 						this.unprocessedUpdates.splice(j, 1);
 					} else {
-						this.localPlayer.keyPresses = update.keyPresses;
-						this.localPlayer.updatePosition(update.physicsDelta);
-						this.localPlayer.seq++;
+						this.localGhost.keyPresses = update.keyPresses;
+						this.localGhost.updatePosition(update.physicsDelta);
+						this.localGhost.seq++;
+						console.log ((this.localGhost.seq == this.inputSeq) ? "yes" : "no");
 						j++;
 					}
 				}
