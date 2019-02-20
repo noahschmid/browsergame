@@ -260,11 +260,6 @@ let Client = function(context, w, h) {
 			
 			this.socket.on('onplayerleft', this.onPlayerLeft.bind(this));
 			
-			this.socket.on('dummies', function(dummies) { 
-				this.dummy1.position = dummies.dummy1;
-				this.dummy2.position = dummies.dummy2;
-			}.bind(this));
-			
 			this.startPingTimer();
 
 	};	
