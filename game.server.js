@@ -4,6 +4,7 @@ let MapController = require ("./public/map");
 let Player = require ("./public/player");
 let GameCore = require("./public/game.core");
 
+
 let Server = function () {
 	GameCore.prototype.constructor.call(this);
 	this.players = [];
@@ -131,7 +132,7 @@ Server.prototype.mainUpdate = function(){
 		let player = this.players[i];
 		pack.push ( { id: player.playerId, position:player.position, lastPosition:player.lastPosition, velocity: player.velocity, animPhase: player.animPhase, facingLeft: player.facingLeft, seq: player.inputs.seq} );
 	}
-	
+
 	this.lastState = { players:pack, time:this.localTime };
 	
 	/*for (let b in BULLETS) {
