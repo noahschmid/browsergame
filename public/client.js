@@ -7,6 +7,7 @@ let Client = function(context, w, h) {
 		this.offsetY = 0;
 		this.localPlayer = {};
 		this.players = [];
+		this.playerUpdates = [];
 		this.bullets = {};
 		
 		this.collisionBoxes = false;
@@ -111,11 +112,16 @@ let Client = function(context, w, h) {
 		for (let i in this.players) {
 			let player = data.players[this.players[i].playerId];
 			
-			this.players[i].position = player.position;
-			this.players[i].velocity = player.velocity;
-			this.players[i].animPhase = player.animPhase;
-			this.players[i].facingLeft = player.facingLeft;
+			this.playerUpdates[i].xPos = player.position.x;
+			this.playerUpdates[i].yPos = player.position.y;
+			this.playerUpdates[i].xVel = player.velocity.x;
+            this.playerUpdates[i].yVel = player.velocity.y;
+			this.playerUpdates[i].animPhase = player.animPhase;
 			
+			//this.players[i].position = player.position;
+			//this.players[i].velocity = player.velocity;
+			//this.players[i].animPhase = player.animPhase;
+			this.players[i].facingLeft = player.facingLeft;
 			
 			if (player.id == this.id && this.reconciliation) {
 				this.localGhost.position.x = player.position.x;
@@ -141,6 +147,25 @@ let Client = function(context, w, h) {
 				}
 			}
 		}
+	};
+	
+	Client.prototype.interpolatePlayerEntity = function(player, dest) {
+	    if (dest.yVel != 0) {
+		    player.position.x = this.lerp(player.position.x, dest.xPos, 0.5);
+		    player.position.y = this.lerp(player.position.y, dest.yPos, 0.5);
+		    player.velocity.x = this.lerp(player.velocity.x, dest.xVel, 0.5);
+		    player.velocity.y = this.lerp(player.velocity.y, dest.yVel, 0.5);
+		
+		    player.animPhase = dest.animPhase;
+		} else {
+		    player.position.x = dest.xPos;
+            player.position.y = dest.yPos;
+        	player.velocity.x = dest.xVel;
+        	player.velocity.y = dest.yVel;
+
+        	player.animPhase = dest.animPhase;
+		}
+
 	};
 	
 	Client.prototype.addMessage = function(msg) {
@@ -177,6 +202,8 @@ let Client = function(context, w, h) {
 				let player = data.players[i];
 				Object.setPrototypeOf(player, Player.prototype);
 				player.map = this.map.map;
+
+				this.playerUpdates.push({ posX: player.position.x, posY: player.position.y, velX: player.velocity.x, velY: player.velocity.y, animPhase: player.animPhase });
 			
 				if (player.playerId == data.id) {
 					this.localPlayer = new Player(data.id);
@@ -224,6 +251,8 @@ let Client = function(context, w, h) {
 	
 	Client.prototype.onPlayerJoined = function(data) {
 		this.players.push(data);
+		this.playerUpdates.push({ posX: data.position.x, posY: data.position.y, velX: data.velocity.x, velY: data.velocity.y, animPhase: data.animPhase });
+
 		this.addMessage ("player[" + data.playerId + "] joined the room.");
 		console.log ("player[" + data.playerId + "] joined the room.");
 	};
@@ -270,9 +299,17 @@ let Client = function(context, w, h) {
 			this.context.fillStyle = "black";
 			this.context.fillRect (0,0,this.canvasWidth,this.canvasHeight);
 			this.map.update(this.localPlayer.position);
+			
+			this.updateEntities();
+			
 			this.map.drawMap(this.context);
 			this.render(this.context);
 		}	
+	};
+	
+	Client.prototype.updateEntities = function() {
+		for (let i in this.players)
+			this.interpolatePlayerEntity(this.players[i], this.playerUpdates[i]);
 	};
 	
 	Client.prototype.updatePhysics = function() {
