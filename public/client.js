@@ -258,9 +258,12 @@ let Client = function(context, w, h) {
 	};
 	
 	Client.prototype.onPlayerLeft = function(id) {
-		for (let i in this.players)
-			if (this.players[i].playerId == id)
+		for (let i in this.players) {
+			if (this.players[i].playerId == id) {
 		 	   this.players.splice(i, 1);
+		 	   this.playerUpdates.splice(i, 1);
+		 	}
+		}
 		
 		this.addMessage("player[" + id + "] has left the room.");
 		console.log ("player[" + id + "] has left the room.");
@@ -330,9 +333,9 @@ let Client = function(context, w, h) {
 		if (this.playerGhost)
 			this.drawPlayer(this.localGhost);
 		
-		this.drawButton(this.ghostButton);
+		//this.drawButton(this.ghostButton);
 		this.drawButton(this.collisionButton);
-		this.drawButton(this.serverRecButton);
+		//this.drawButton(this.serverRecButton);
 		
 		if (this.collisionBoxes)
 			this.drawDebugGUI();
