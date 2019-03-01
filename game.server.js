@@ -15,6 +15,7 @@ let Server = function () {
 	this.numClients = 0;
 	
 	this.map = new MapController();
+	this.ball = { x:-1, y:-1, owner:-1, height:32, width:32};
 	
 	this.inputList = [];
 };
@@ -46,8 +47,9 @@ Server.prototype.startListening = function(binder) {
 	
 	const server = http.createServer (app);
 	const io = socketio(server);
-	
-	console.log("server started.");
+
+	binder.ball.x = binder.map.ballSpawn.x;
+    binder.ball.y = binder.map.ballSpawn.y;
 	
 	io.on ('connection', function (client) { 
 
@@ -58,15 +60,17 @@ Server.prototype.startListening = function(binder) {
 			client.userid = this.freeIds[pos];
 			this.freeIds.splice (pos, 1);
 		}
-	
-		console.log ('client[' + client.userid + '] connected.');
+
 		this.clients[client.userid] = client;
 	
 		let player = new Player (client.userid, this.map);
 		this.players[client.userid] = player;
+		console.log (this.players[client.userid].name + " connected.");
 		this.numClients++;
 		client.emit ('message', 'connected to master server.'); 
-		client.emit ('onconnected', { id:client.userid, map:this.map.map, tileSetNames:this.map.tileSetNames, tileSize:this.map.tileSize, mapWidth:this.map.mapWidth, mapHeight:this.map.mapHeight, players:this.players, serverTime:this.localTime } ); 
+		client.emit ('onconnected', { id:client.userid, map:this.map.map, tileSetNames:this.map.tileSetNames,
+		            tileSize:this.map.tileSize, mapWidth:this.map.mapWidth, mapHeight:this.map.mapHeight,
+		            players:this.players, serverTime:this.localTime, ball:this.ball } );
 		
 		for (let i in this.clients) {
 			if (this.clients[i].userid != client.userid)
@@ -86,10 +90,14 @@ Server.prototype.startListening = function(binder) {
 				this.players[client.userid].updatePosition(this.physicsDelta);*/
 			
 			this.players[client.userid].updatePosition(event.physicsDelta);
+
+			if (this.players[client.userid].keyPresses.shift && this.ball.owner == client.userid) {
+			    console.log(this.players[client.userid].name + " dropped the ball.");
+			    this.ball.owner = -1;
+			}
 			
 			this.players[client.userid].inputs = event;
 			this.players[client.userid].stateTime = event.time;
-			
 		}.bind(binder));
 		
 		client.on('p', function(data) {
@@ -97,7 +105,7 @@ Server.prototype.startListening = function(binder) {
 		});
 	
 		client.on('disconnect', function () { 
-			console.log ("client[" + client.userid +"] disconnected."); 
+			console.log (this.players[client.userid].name + " disconnected.");
 			
 			delete this.clients[client.userid];
 			delete this.players[client.userid];
@@ -124,7 +132,6 @@ Server.prototype.mainUpdate = function(){
 	
 	this.lastState = {players:this.players};
 	
-	
 	let pack = [];
 	for (let i in this.players) {
 		if (typeof this.players[i] == 'undefined')
@@ -133,7 +140,7 @@ Server.prototype.mainUpdate = function(){
 		pack.push ( { id: player.playerId, position:player.position, lastPosition:player.lastPosition, velocity: player.velocity, animPhase: player.animPhase, facingLeft: player.facingLeft, seq: player.inputs.seq} );
 	}
 
-	this.lastState = { players:pack, time:this.localTime };
+	this.lastState = { players:pack, time:this.localTime, ball:this.ball };
 	
 	/*for (let b in BULLETS) {
 		let bullet = BULLETS[b];
@@ -150,22 +157,28 @@ Server.prototype.mainUpdate = function(){
 		client.emit ('serverupdate', this.lastState);
 		//client.emit ('bulletList', BULLETS);
 	}
-	
-	
 };
 
 Server.prototype.updatePhysics = function() {
 	GameCore.prototype.updatePhysics.apply(this);
 
-	for (let i in this.players) {
-		let player = this.players[i];
-		
-		/*while (player.inputs.length > 1) {
-			player.handleInputs(a);
-			player.updatePosition(this.physicsDelta);
-		}
-		
-		player.updatePosition(this.physicsDelta);*/
-		//player.inputs = [];
+    if (typeof this.ball == 'undefined')
+        return;
+
+	if (this.ball.owner != -1) {
+	    let owner = this.players[this.ball.owner];
+	    this.ball.x = owner.position.x + owner.size.x / 2 - this.ball.width/2;
+	    this.ball.y = owner.position.y - this.ball.height - 20;
+
+	} else {
+	    for (let i in this.players) {
+        		let player = this.players[i];
+
+        		if (player.position.x + player.size.x >= this.ball.x && player.position.x <= this.ball.x + this.ball.width &&
+        		    player.position.y + player.size.y >= this.ball.y && player.position.y <= this.ball.y + this.ball.height) {
+        		        this.ball.owner = i;
+        		        console.log("player[" + player.playerId + "] captured the ball");
+        		    }
+        	}
 	}
 };

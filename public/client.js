@@ -1,7 +1,7 @@
 let Client = function(context, w, h) {
-	GameCore.prototype.constructor.call(this);
+	    GameCore.prototype.constructor.call(this);
 	
-	this.id = 0;
+	    this.id = 0;
 		
 		this.offsetX = 0;
 		this.offsetY = 0;
@@ -22,7 +22,7 @@ let Client = function(context, w, h) {
 		this.canvasHeight = h;
 		
 		this.state = 'not-connected';
-		this.gameCore = new GameCore ();
+		this.gameCore = new GameCore();
 		this.socket = {};
 		
 		this.tileSet = [];
@@ -30,8 +30,12 @@ let Client = function(context, w, h) {
 		this.tileSetsLoaded = 0;
 		this.totalTiles = 0;
 		
-		this.playerImage = new Image ();
+		this.playerImage = new Image();
 		this.playerImage.src = "hero.png";
+
+		this.ball = { x:0, y:0, owner:-1, image:new Image() };
+		this.ball.image.src = "ball.png";
+		this.ballUpdate = { x:0, y:0 };
 		
 		this.lastPingTime = new Date().getTime();
 		this.netPing = 2;
@@ -48,7 +52,7 @@ let Client = function(context, w, h) {
 		
 		this.lastProcessedSequence = -1;
 		
-		this.keyPresses = { left:false, right:false, up:false, down:false, fire:false, jump:false };
+		this.keyPresses = { left:false, right:false, up:false, down:false, fire:false, jump:false, shift:false };
 		
 		this.localGhost = {};
 		
@@ -147,6 +151,9 @@ let Client = function(context, w, h) {
 				}
 			}
 		}
+
+		this.ballUpdate.x = data.ball.x;
+		this.ballUpdate.y = data.ball.y;
 	};
 	
 	Client.prototype.interpolatePlayerEntity = function(player, dest) {
@@ -165,8 +172,12 @@ let Client = function(context, w, h) {
 
         	player.animPhase = dest.animPhase;
 		}
-
 	};
+
+	Client.prototype.interpolateBallEntity = function(ball, dest) {
+        ball.x = this.lerp(ball.x, dest.x, 0.5);
+        ball.y = this.lerp(ball.y, dest.y, 0.5);
+    };
 	
 	Client.prototype.addMessage = function(msg) {
 		this.messages.push ({msg:msg, time:new Date().getTime()});
@@ -313,6 +324,8 @@ let Client = function(context, w, h) {
 	Client.prototype.updateEntities = function() {
 		for (let i in this.players)
 			this.interpolatePlayerEntity(this.players[i], this.playerUpdates[i]);
+
+		this.interpolateBallEntity(this.ball, this.ballUpdate);
 	};
 	
 	Client.prototype.updatePhysics = function() {
@@ -327,7 +340,8 @@ let Client = function(context, w, h) {
 			if (this.players[i].playerId != this.id)
 				this.drawPlayer(this.players[i]);
 		}
-		
+
+		this.drawBall();
 		this.drawPlayer(this.localPlayer);
 		
 		if (this.playerGhost)
@@ -390,6 +404,12 @@ let Client = function(context, w, h) {
 		}
 		
 		this.context.fillText (player.name, player.position.x - this.map.offsetX + 32, player.position.y - this.map.offsetY - 15);
+	};
+
+	Client.prototype.drawBall = function() {
+	    if (this.ball.x != -1 && this.ball.y != -1) {
+	        this.context.drawImage(this.ball.image, this.ball.x - this.map.offsetX, this.ball.y - this.map.offsetY, 32, 32);
+	    }
 	};
 	
 	Client.prototype.drawDebugGUI = function() {
@@ -478,51 +498,52 @@ let Client = function(context, w, h) {
 		  this.keyEvent = true;
   		if (event.keyCode === 68 || event.keyCode == 39) {// d
 			this.keyPresses.right = true;
-			
-  			//this.socket.emit ("keyPress", { inputId :'right', state : true });
   		}
   		if (event.keyCode === 83){ // s
 			this.keyPresses.down = true;
-  			//this.socket.emit ("keyPress", { inputId :'down', state : true });
   		}
   		if (event.keyCode === 65 || event.keyCode == 37) {// a
 			this.keyPresses.left = true;
-  			//this.socket.emit ("keyPress", { inputId :'left', state : true });
   		}
   		if (event.keyCode === 87 || event.keyCode == 38) { // w
 			this.keyPresses.up = true;
-  			//this.socket.emit ("keyPress", { inputId : 'up', state : true });
   		}
-  		if (event.keyCode == 32) {
+  		if (event.keyCode == 32 || event.keyCode == 38) {
 			this.keyPresses.jump = true;
-  			//this.socket.emit ("keyPress", { inputId : 'jump', state : true });
   		}
 		
   		if (event.keyCode == 18) {
 			this.keyPresses.fire = true;
-  			//this.socket.emit ("keyPress", { inputId : 'fire', state : true });
+		}
+
+		if (event.keyCode == 16) { //shift
+		    this.keyPresses.shift = true;
 		}
 	  };
 	  
   	Client.prototype.onKeyUp = function (event) {
 		this.keyEvent = true;
+
   		if (event.keyCode === 68 || event.keyCode == 39) // d
 			this.keyPresses.right = false;
-  			//this.socket.emit ("keyPress", { inputId :'right', state : false, time:Date.now () });
+
   		if (event.keyCode === 83) // s
 			this.keyPresses.down = false;
-  			//this.socket.emit ("keyPress", { inputId :'down', state : false, time:Date.now () });
+
   		if (event.keyCode === 65 || event.keyCode == 37) // a
 			this.keyPresses.left = false;
-  			//this.socket.emit ("keyPress", { inputId :'left', state : false, time:Date.now ()  });
+
   		if (event.keyCode === 87) // w
 			this.keyPresses.up = false;
-  			//this.socket.emit ("keyPress", { inputId : 'up', state : false, time:Date.now ()  });
+
   		if (event.keyCode == 32 || event.keyCode == 38) 
 			this.keyPresses.jump = false;
-  			//this.socket.emit ("keyPress", { inputId : 'jump', state : false, time:Date.now ()  });
+
   		if (event.keyCode == 18) 
 			this.keyPresses.fire = false;
-  			//this.socket.emit ("keyPress", { inputId : 'fire', state : false, time:Date.now ()  });
+
+  		if (event.keyCode == 16)  //shift
+            this.keyPresses.shift = false;
+
   	};
 	

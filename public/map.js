@@ -30,6 +30,9 @@ let MapController = function (canvasWidth, canvasHeight) {
 	
 	this.offsetX = 0;
 	this.offsetY = 0;
+
+	this.ballIndex = -1;
+	this.ballSpawn = { x:-1, y:-1 };
 	
 	this.anchor = {};
 	this.canvasWidth = (typeof canvasWidth == 'undefined') ? 1200 : canvasWidth;
@@ -47,6 +50,7 @@ if ( 'undefined' != typeof global ) {
 		let tileSetNames = [];
 		let map = [];
 		let spawnPoints = new Array (3);
+		let ballSpawn = {x:-1, y:-1};
 		spawnPoints[0] = [];
 		spawnPoints[1] = [];
 		spawnPoints[2] = [];
@@ -84,7 +88,9 @@ if ( 'undefined' != typeof global ) {
 						} else if (pos == -3) {
 							if (lines[i].substring (0,2).localeCompare ("f:") == 0) {
 								tileSetNames.push(lines[i].substring(2));
-							} else
+							} else if (lines[i].substring (0,5).localeCompare ("ball:") == 0) {
+                                this.ballIndex = parseInt(lines[i].substring(5));
+                            } else
 								pos = 0;	
 						} else {
 							let step = 1, x = 0;
@@ -102,8 +108,15 @@ if ( 'undefined' != typeof global ) {
 										fieldStep = field.substring(c).indexOf ('.');
 									else
 										fieldStep = field.substring(c).length;
-								
-									map[l][x][y] = parseInt (field.substring (c, c + fieldStep));
+
+									let fieldIndex = parseInt (field.substring (c, c + fieldStep));
+
+								    if (fieldIndex == this.ballIndex) {
+                                        fieldIndex = 0;
+                                        ballSpawn.x = x * tileSize;
+                                        ballSpawn.y = y * tileSize;
+								    }
+									map[l][x][y] = fieldIndex;
 								
 									if (l == 0 && map[l][x][y] == GENERAL_SPAWN) {
 										spawnPoints[GENERAL_SPAWN - 2].push ({ x: x * tileSize, y: (y-1) * tileSize});
@@ -114,7 +127,6 @@ if ( 'undefined' != typeof global ) {
 									
 									c+= fieldStep + 1;
 								}
-							
 								x++;
 							}
 							y++;
@@ -132,6 +144,9 @@ if ( 'undefined' != typeof global ) {
 		this.spawnPoints = spawnPoints;
 		this.map = map;
 		this.tileSetNames = tileSetNames;
+		this.ballSpawn = ballSpawn;
+
+		console.log("ball spawn: " + ballSpawn.x + " " + ballSpawn.y);
 		
 		if (this.spawnPoints[GENERAL_SPAWN - 2].length < 1) {
 			console.log ("no spawnpoint found");
@@ -284,7 +299,7 @@ if ( 'undefined' != typeof global ) {
 	
 	MapController.prototype.update = function(anchor) {
 		
-		if (anchor.y < this.mapHeight * this.tileSize - this.canvasHeight/2 && anchor.y > this.canvasHeight/2 - 32) {
+		if (anchor.y + 64 < this.mapHeight * this.tileSize - this.canvasHeight/2 && anchor.y + 32 > this.canvasHeight/2) {
 			this.offsetY = anchor.y - (this.canvasHeight / 2 - 32);
 			this.anchor = anchor;
 		}
