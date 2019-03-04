@@ -90,11 +90,6 @@ Server.prototype.startListening = function(binder) {
 				this.players[client.userid].updatePosition(this.physicsDelta);*/
 			
 			this.players[client.userid].updatePosition(event.physicsDelta);
-
-			if (this.players[client.userid].keyPresses.shift && this.ball.owner == client.userid) {
-			    console.log(this.players[client.userid].name + " dropped the ball.");
-			    this.ball.owner = -1;
-			}
 			
 			this.players[client.userid].inputs = event;
 			this.players[client.userid].stateTime = event.time;
@@ -137,7 +132,7 @@ Server.prototype.mainUpdate = function(){
 		if (typeof this.players[i] == 'undefined')
 			continue;
 		let player = this.players[i];
-		pack.push ( { id: player.playerId, position:player.position, lastPosition:player.lastPosition, velocity: player.velocity, animPhase: player.animPhase, facingLeft: player.facingLeft, seq: player.inputs.seq} );
+		pack.push ( { id: player.playerId, position:player.position, lastPosition:player.lastPosition, velocity: player.velocity, animPhase: player.animPhase, health:player.health, stamina:player.stamina, facingLeft: player.facingLeft, seq: player.inputs.seq} );
 	}
 
 	this.lastState = { players:pack, time:this.localTime, ball:this.ball };
@@ -165,20 +160,19 @@ Server.prototype.updatePhysics = function() {
     if (typeof this.ball == 'undefined')
         return;
 
-	if (this.ball.owner != -1) {
+	if (typeof this.players[this.ball.owner] != 'undefined' ) {
 	    let owner = this.players[this.ball.owner];
 	    this.ball.x = owner.position.x + owner.size.x / 2 - this.ball.width/2;
 	    this.ball.y = owner.position.y - this.ball.height - 20;
 
-	} else {
+	}
 	    for (let i in this.players) {
         		let player = this.players[i];
 
         		if (player.position.x + player.size.x >= this.ball.x && player.position.x <= this.ball.x + this.ball.width &&
         		    player.position.y + player.size.y >= this.ball.y && player.position.y <= this.ball.y + this.ball.height) {
         		        this.ball.owner = i;
-        		        console.log("player[" + player.playerId + "] captured the ball");
+        		        console.log(player.name + " captured the ball");
         		    }
         	}
-	}
 };

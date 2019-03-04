@@ -1,6 +1,7 @@
 "use strict";
 
-const MAX_SPEED = 400;
+const WALK_ACCELERATION = 1500;
+const RUN_ACCELERATION = 4000;
 const MAX_GRAVITY = 600;
 const GRAVITY = 2300;
 const PLAYER_HEIGHT = 64;
@@ -37,7 +38,6 @@ let Player = function (id, map){
 			this.position = new Vec2d (0,0);
 		
 		this.lastPosition = this.position;
-		this.maxSpeed = MAX_SPEED;
 		this.acceleration = new Vec2d (1500, 0);
 		this.deceleration = new Vec2d (600, 0);
 		this.animState = animStates.idle;
@@ -45,14 +45,17 @@ let Player = function (id, map){
 		this.position.x -= LEFT_MARGIN;
 		this.map = map;
 		this.grounded = false;
-		this.keyPresses = { left:false, right:false, up:false, down:false, fire:false, jump:false };
+		this.keyPresses = { left:false, right:false, up:false, down:false, fire:false, jump:false, shift:false };
 		this.collisionBlocksX = {};
 		this.collisionBlocksY = {};
 		this.facingLeft = false;
 		this.direction = 0;
 		this.distance = 0;
 		this.jumpsLeft = 0;
+		this.staminaCoolOff = false;
+
 		this.health = 100;
+		this.stamina = 100;
 		this.points = 0;
 		
 		this.jumpCoolOff = false;
@@ -82,6 +85,10 @@ if ( 'undefined' != typeof global ) {
 	
 	Player.prototype.updatePosition = function(delta) {
 		this.lastPosition = this.position;
+		
+		if (this.staminaCoolOff && !this.keyPresses.shift)
+			this.staminaCoolOff = false;
+		
 		if (this.currentAnimState != animStates.jumping)
 			this.currentAnimState = animStates.idle;
 		
@@ -93,6 +100,19 @@ if ( 'undefined' != typeof global ) {
 			this.direction = 1;
 		} else {
 			this.direction = 0;
+		}
+
+		if (this.keyPresses.shift && this.stamina > 0 && !this.staminaCoolOff && this.direction != 0) {
+		    this.acceleration.x = RUN_ACCELERATION;
+		    this.stamina -= 50 * delta;
+		} else {
+		    this.acceleration.x = WALK_ACCELERATION;
+			this.stamina = this.stamina >= 100 ? 100 : this.stamina + 10 * delta;
+		}
+		
+		if (this.stamina < 0) {
+			this.stamina = 0;
+			this.staminaCoolOff = true;
 		}
 		
 		let absX = Math.abs (this.velocity.x);

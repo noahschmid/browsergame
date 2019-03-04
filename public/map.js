@@ -33,6 +33,8 @@ let MapController = function (canvasWidth, canvasHeight) {
 
 	this.ballIndex = -1;
 	this.ballSpawn = { x:-1, y:-1 };
+	this.teamOneGoalPosition = { x:-1, y:-1 };
+	this.teamTwoGoalPosition = { x:-1, y:-1 };
 	
 	this.anchor = {};
 	this.canvasWidth = (typeof canvasWidth == 'undefined') ? 1200 : canvasWidth;

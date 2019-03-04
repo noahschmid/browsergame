@@ -33,7 +33,7 @@ let Client = function(context, w, h) {
 		this.playerImage = new Image();
 		this.playerImage.src = "hero.png";
 
-		this.ball = { x:0, y:0, owner:-1, image:new Image() };
+		this.ball = { x:0, y:0, width:32, height:32, owner:-1, image:new Image() };
 		this.ball.image.src = "ball.png";
 		this.ballUpdate = { x:0, y:0 };
 		
@@ -126,8 +126,13 @@ let Client = function(context, w, h) {
 			//this.players[i].velocity = player.velocity;
 			//this.players[i].animPhase = player.animPhase;
 			this.players[i].facingLeft = player.facingLeft;
+			this.players[i].health = player.health;
+			this.players[i].stamina = player.stamina;
 			
 			if (player.id == this.id && this.reconciliation) {
+				this.localPlayer.stamina = player.stamina;
+				this.localPlayer.health = player.health;
+				
 				this.localGhost.position.x = player.position.x;
 				this.localGhost.position.y = player.position.y;
 				this.localGhost.velocity.x = player.velocity.x;
@@ -154,6 +159,7 @@ let Client = function(context, w, h) {
 
 		this.ballUpdate.x = data.ball.x;
 		this.ballUpdate.y = data.ball.y;
+		this.ball.owner = data.ball.owner;
 	};
 	
 	Client.prototype.interpolatePlayerEntity = function(player, dest) {
@@ -325,7 +331,12 @@ let Client = function(context, w, h) {
 		for (let i in this.players)
 			this.interpolatePlayerEntity(this.players[i], this.playerUpdates[i]);
 
-		this.interpolateBallEntity(this.ball, this.ballUpdate);
+        if (this.ball.owner != this.id)
+		    this.interpolateBallEntity(this.ball, this.ballUpdate);
+		else {
+		    this.ball.x = this.localPlayer.position.x + this.localPlayer.size.x / 2 - this.ball.width/2;
+            this.ball.y = this.localPlayer.position.y - this.ball.height - 20;
+		}
 	};
 	
 	Client.prototype.updatePhysics = function() {
@@ -343,6 +354,7 @@ let Client = function(context, w, h) {
 
 		this.drawBall();
 		this.drawPlayer(this.localPlayer);
+		this.drawBar("blue", 50, this.canvasHeight - 30, this.canvasWidth - 100, 15, this.localPlayer.stamina);
 		
 		if (this.playerGhost)
 			this.drawPlayer(this.localGhost);
@@ -358,6 +370,7 @@ let Client = function(context, w, h) {
 		this.context.textAlign = 'center';
 		this.context.textBaseline = 'middle'
 		this.context.fillText ("points: " + this.localPlayer.points, this.canvasWidth - 50, 15);
+		this.context.fillText ("stamina: " + Math.floor(this.localPlayer.stamina), this.canvasWidth - 50, 45);
 		
 		this.renderMessages();
 	};
@@ -369,18 +382,8 @@ let Client = function(context, w, h) {
 		
 		let bbox = { x:player.position.x+16, y:player.position.y, width:32, height:64 };
 			
-		this.context.strokeStyle = "red";
-		this.context.fillStyle = "white";
-		this.context.beginPath ();
-		this.context.rect (player.position.x - this.map.offsetX, player.position.y - this.map.offsetY - 5, player.size.x, 5);
-		this.context.fillRect (player.position.x - this.map.offsetX, player.position.y - this.map.offsetY - 5, player.size.x, 5);
-		this.context.stroke ();
-			
-		this.context.fillStyle = "red";
-		this.context.beginPath ();
-		this.context.fillRect (player.position.x - this.map.offsetX, player.position.y - this.map.offsetY - 5, (player.health / 100) * player.size.x, 5);
-		this.context.stroke ();
-			
+		this.drawBar("red", player.position.x - this.map.offsetX, player.position.y - this.map.offsetY - 5, player.size.x, 5, player.health);
+		
 		const buffer = document.createElement('canvas');
 		buffer.width = player.size.x;
 		buffer.height = player.size.y;
@@ -404,6 +407,20 @@ let Client = function(context, w, h) {
 		}
 		
 		this.context.fillText (player.name, player.position.x - this.map.offsetX + 32, player.position.y - this.map.offsetY - 15);
+	};
+	
+	Client.prototype.drawBar = function(color, x, y, width, height, value) {
+		this.context.strokeStyle = color;
+		this.context.fillStyle = "white";
+		this.context.beginPath ();
+		this.context.rect (x, y, width, height);
+		this.context.fillRect (x, y, width, height);
+		this.context.stroke ();
+			
+		this.context.fillStyle = color;
+		this.context.beginPath ();
+		this.context.fillRect (x, y, (value / 100) * width, height);
+		this.context.stroke ();
 	};
 
 	Client.prototype.drawBall = function() {
