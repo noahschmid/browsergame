@@ -1,0 +1,28 @@
+<html>
+<head>
+<title> komischs spil </title>
+<style> 
+	* { margin:0; padding:0; }
+	
+	html, body { width:100%; height:100%; }
+	
+	#canvas {
+					display:block;
+					margin: 0;
+					padding: 0;
+					image-rendering:pixelated;
+					overflow:hidden;
+				}
+</style>
+</head>
+<body bgcolor = "black">
+	<!--<button id="debugMode">Debug OFF</button><!-->
+<canvas id="canvas"> </canvas>
+	<script src = "/socket.io/socket.io.js"></script>
+	<script src ="map.js"></script>
+	<script src ="player.js"></script>
+	<script src ="game.core.js"></script>
+	<script src ="client.js"></script>
+	<script src ="app.js"></script>
+</body>
+</html>
