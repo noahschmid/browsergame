@@ -33,7 +33,7 @@ let Client = function(context, w, h) {
 		this.playerImage = new Image();
 		this.playerImage.src = "hero.png";
 
-		this.ball = { x:0, y:0, width:32, height:32, owner:-1, image:new Image() };
+		this.ball = { x:0, y:0, width:32, height:32, owner:-1, touchdown:false, image:new Image() };
 		this.ball.image.src = "ball.png";
 		this.ballUpdate = { x:0, y:0 };
 		
@@ -86,20 +86,22 @@ let Client = function(context, w, h) {
 	Client.prototype.constructor = Client;
 	
 	Client.prototype.loadTileSet = function(filename, tileSetBuffer) {
-		this.map.tileSet[this.map.tileSetsLoaded] = new Image ();
-		this.map.tileSet[this.map.tileSetsLoaded].onload = function () {
-			if (this.tileSet[this.tileSetsLoaded].naturalWidth % this.tileSize == 0 && this.tileSet[this.tileSetsLoaded].naturalWidth % this.tileSize == 0){
-				console.log ("correct dimensions");
-				this.numTilesInSet[this.tileSetsLoaded] = parseInt ((this.tileSet[this.tileSetsLoaded].naturalWidth / this.tileSize)) * parseInt ((this.tileSet[this.tileSetsLoaded].naturalHeight / this.tileSize));
-				this.totalTiles += this.numTilesInSet[this.tileSetsLoaded];
-				console.log ("tiles in set: " + this.numTilesInSet [this.tileSetsLoaded]);
-				this.tileSetsLoaded ++;
+		this.map.tileSetsLoaded++;
+		const idx = this.map.tileSetsLoaded - 1;
+		console.log("Loading tileset[" + idx + "]: " + filename)
+		this.map.tileSet[idx] = new Image ();
+		this.map.tileSet[idx].onload = function () {
+			if (this.tileSet[idx].naturalWidth % this.tileSize == 0 && this.tileSet[idx].naturalWidth % this.tileSize == 0){
+				console.log ("set[" + idx + "]: correct dimensions");
+				this.numTilesInSet[idx] = parseInt ((this.tileSet[idx].naturalWidth / this.tileSize)) * parseInt ((this.tileSet[idx].naturalHeight / this.tileSize));
+				this.totalTiles += this.numTilesInSet[idx];
+				console.log ("tiles in set[" + idx + "]: " + this.numTilesInSet [idx]);
 			} else {
 				console.log ("tileset has wrong dimensions!");
 			}
 		}.bind(this.map);
-		
-		this.map.tileSet[this.map.tileSetsLoaded].src = filename;
+
+		this.map.tileSet[idx].src = filename;
 	};
 	
 	Client.prototype.resize = function(width, height) {
@@ -258,7 +260,10 @@ let Client = function(context, w, h) {
 	};
 	
 	Client.prototype.onNetMessage = function(msg) {
-		console.log (msg);
+		if(!msg.dev)
+			this.addMessage(msg.message);
+		else
+			console.log(msg.message)
 	};
 	
 	Client.prototype.onPing = function(data) {
@@ -331,7 +336,7 @@ let Client = function(context, w, h) {
 		for (let i in this.players)
 			this.interpolatePlayerEntity(this.players[i], this.playerUpdates[i]);
 
-        if (this.ball.owner != this.id)
+        if (this.ball.owner != this.id || this.ball.touchdown)
 		    this.interpolateBallEntity(this.ball, this.ballUpdate);
 		else {
 		    this.ball.x = this.localPlayer.position.x + this.localPlayer.size.x / 2 - this.ball.width/2;

@@ -5,6 +5,8 @@ const COLLIDER = 1;
 const GENERAL_SPAWN = 2;
 const TEAM_ONE_SPAWN = 3;
 const TEAM_TWO_SPAWN = 4;
+const GOAL1 = 5;
+const GOAL2 = 6;
 
 let MapController = function (canvasWidth, canvasHeight) {
 	this.map = [];
@@ -24,8 +26,8 @@ let MapController = function (canvasWidth, canvasHeight) {
 	//Object.freeze (this.tileTypes);
 	
 	this.tileSet = [];
-	this.tileSetsLoaded = 0;
 	this.numTilesInSet = {};
+	this.tileSetsLoaded = 0;
 	this.totalTiles = 0;
 	
 	this.offsetX = 0;
@@ -53,6 +55,9 @@ if ( 'undefined' != typeof global ) {
 		let map = [];
 		let spawnPoints = new Array (3);
 		let ballSpawn = {x:-1, y:-1};
+		let goal1 = {x:-1, y:-1};
+		let goal2 = {x:-1, y:-1};
+
 		spawnPoints[0] = [];
 		spawnPoints[1] = [];
 		spawnPoints[2] = [];
@@ -87,51 +92,59 @@ if ( 'undefined' != typeof global ) {
 							console.log (lines[i]);
 							tileSize = parseInt (lines[i]);
 							pos = -3;
-						} else if (pos == -3) {
+						} else {
 							if (lines[i].substring (0,2).localeCompare ("f:") == 0) {
 								tileSetNames.push(lines[i].substring(2));
 							} else if (lines[i].substring (0,5).localeCompare ("ball:") == 0) {
                                 this.ballIndex = parseInt(lines[i].substring(5));
-                            } else
-								pos = 0;	
-						} else {
-							let step = 1, x = 0;
-							for (let n = 0; n < lines[i].length - 1; n += (step + 1)) {
-								if (lines[i].substring(n).includes (' '))
-									step = lines[i].substring(n).indexOf (' ');
-								else
-									step = lines[i].substring(n).length;
-							
-								let field = lines[i].substring (n, n+step);
-								let fieldStep = 0, c = 0;
-							
-								for (let l = 0; l < MAX_LAYERS; l++) {
-									if (field.substring(c).includes ('.'))
-										fieldStep = field.substring(c).indexOf ('.');
+                            } else {
+								let step = 1, x = 0;
+								for (let n = 0; n < lines[i].length - 1; n += (step + 1)) {
+									if (lines[i].substring(n).includes (' '))
+										step = lines[i].substring(n).indexOf (' ');
 									else
-										fieldStep = field.substring(c).length;
-
-									let fieldIndex = parseInt (field.substring (c, c + fieldStep));
-
-								    if (fieldIndex == this.ballIndex) {
-                                        fieldIndex = 0;
-                                        ballSpawn.x = x * tileSize;
-                                        ballSpawn.y = y * tileSize;
-								    }
-									map[l][x][y] = fieldIndex;
+										step = lines[i].substring(n).length;
 								
-									if (l == 0 && map[l][x][y] == GENERAL_SPAWN) {
-										spawnPoints[GENERAL_SPAWN - 2].push ({ x: x * tileSize, y: (y-1) * tileSize});
-									} else if (l == 0 && map[l][x][y] == TEAM_ONE_SPAWN) {
-										spawnPoints[TEAM_ONE_SPAWN - 2].push ({ x: x * tileSize, y: (y-1) * tileSize});
-									} else if (l == 0 && map[l][x][y] == TEAM_TWO_SPAWN)
-										spawnPoints[TEAM_TWO_SPAWN - 2].push ({ x: x * tileSize, y: (y-1) * tileSize});
+									let field = lines[i].substring (n, n+step);
+									let fieldStep = 0, c = 0;
+
+								
+									for (let l = 0; l < MAX_LAYERS; l++) {
+										if (field.substring(c).includes ('.'))
+											fieldStep = field.substring(c).indexOf ('.');
+										else
+											fieldStep = field.substring(c).length;
+
+										let fieldIndex = parseInt (field.substring (c, c + fieldStep));
+
+										if (fieldIndex == this.ballIndex) {
+											fieldIndex = 0;
+											ballSpawn.x = x * tileSize;
+											ballSpawn.y = y * tileSize;
+										} else if(fieldIndex == this.ballIndex + 1) {
+											fieldIndex = 0;
+											goal1.x = x * tileSize;
+											goal1.y = y * tileSize;
+										} else if(fieldIndex == this.ballIndex + 2) {
+											fieldIndex = 0;
+											goal2.x = x * tileSize;
+											goal2.y = y * tileSize;
+										}
+										map[l][x][y] = fieldIndex;
 									
-									c+= fieldStep + 1;
+										if (l == 0 && map[l][x][y] == GENERAL_SPAWN) {
+											spawnPoints[GENERAL_SPAWN - 2].push ({ x: x * tileSize, y: (y-1) * tileSize});
+										} else if (l == 0 && map[l][x][y] == TEAM_ONE_SPAWN) {
+											spawnPoints[TEAM_ONE_SPAWN - 2].push ({ x: x * tileSize, y: (y-1) * tileSize});
+										} else if (l == 0 && map[l][x][y] == TEAM_TWO_SPAWN) 
+											spawnPoints[TEAM_TWO_SPAWN - 2].push ({ x: x * tileSize, y: (y-1) * tileSize});
+										
+										c+= fieldStep + 1;
+									}
+									x++;
 								}
-								x++;
+								y++;
 							}
-							y++;
 						}
 					}
 	            }
@@ -147,6 +160,8 @@ if ( 'undefined' != typeof global ) {
 		this.map = map;
 		this.tileSetNames = tileSetNames;
 		this.ballSpawn = ballSpawn;
+		this.teamOneGoalPosition = goal1;
+		this.teamTwoGoalPosition = goal2;
 
 		console.log("ball spawn: " + ballSpawn.x + " " + ballSpawn.y);
 		
@@ -162,11 +177,11 @@ if ( 'undefined' != typeof global ) {
 	};
 	
 	MapController.prototype.getTypeByPos = function(pos) {
-		return map[0][toIndex(pos.x)][toIndex(pos.y)];
+		return this.map[0][this.toIndex(pos.x)][this.toIndex(pos.y)];
 	};
 	
 	MapController.prototype.getTypeByIndex = function(x, y, layer) {
-		return map[0][x][y];
+		return this.map[0][x][y];
 	};
 	
 	MapController.prototype.toIndex = function(pos){
@@ -241,18 +256,23 @@ if ( 'undefined' != typeof global ) {
 	};
 	
 	MapController.prototype.drawTile = function(tileIndex, x, y, useOffset, canvas) {
-		if (this.tileSetsLoaded == 0)
+		if (this.tileSetNames.length == 0)
 			return;
 		if (tileIndex == 0 || tileIndex > this.totalTiles)
 			return;
-		
+
 		let tileSetId = 0, tileInSet = 0;
-		for (let i = 1; i <= tileIndex; i ++) {
-			if (tileInSet > this.numTilesInSet[tileSetId] - 1) {
-				tileSetId++;
-				tileInSet = 1;
-			} else
-				tileInSet++;
+
+		let tmp = 0;
+		
+		for(let i = 0; i < this.tileSetNames.length; ++i) {
+			if(tileIndex - tmp > this.numTilesInSet[i]) {
+				tmp += this.numTilesInSet[i];
+			} else {
+				tileSetId = i;
+				tileInSet = tileIndex - tmp;
+				break;
+			}
 		}
 
 		var tilesX = parseInt(this.tileSet[tileSetId].naturalWidth / this.tileSize);
@@ -301,7 +321,7 @@ if ( 'undefined' != typeof global ) {
 	
 	MapController.prototype.update = function(anchor) {
 		
-		if (anchor.y + 64 < this.mapHeight * this.tileSize - this.canvasHeight/2 && anchor.y + 32 > this.canvasHeight/2) {
+		if (anchor.y + 32 < this.mapHeight * this.tileSize - this.canvasHeight/2 && anchor.y + 32 > this.canvasHeight/2) {
 			this.offsetY = anchor.y - (this.canvasHeight / 2 - 32);
 			this.anchor = anchor;
 		}

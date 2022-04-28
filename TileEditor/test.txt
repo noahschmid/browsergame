@@ -1,0 +1,5 @@
+2x2
+32
+f:a_dungeon_tileset_by_jani_makinen_gfx0_2016_32x32.png
+5.3.2.11.0 5.3.0.0.0
+5.3.0.0.0 5.3.2.11.0

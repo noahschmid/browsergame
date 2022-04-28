@@ -13,9 +13,13 @@ let Server = function () {
 	
 	this.freeIds = [];
 	this.numClients = 0;
+
+	this.resetTimer = 0;
 	
 	this.map = new MapController();
-	this.ball = { x:-1, y:-1, owner:-1, height:32, width:32};
+	this.ball = { x:-1, y:-1, owner:-1, touchdown:false, height:32, width:32};
+
+	this.bullets = [];
 	
 	this.inputList = [];
 };
@@ -67,7 +71,7 @@ Server.prototype.startListening = function(binder) {
 		this.players[client.userid] = player;
 		console.log (this.players[client.userid].name + " connected.");
 		this.numClients++;
-		client.emit ('message', 'connected to master server.'); 
+		this.sendMessage(client.userid, "connected to game server", true);
 		client.emit ('onconnected', { id:client.userid, map:this.map.map, tileSetNames:this.map.tileSetNames,
 		            tileSize:this.map.tileSize, mapWidth:this.map.mapWidth, mapHeight:this.map.mapHeight,
 		            players:this.players, serverTime:this.localTime, ball:this.ball } );
@@ -118,6 +122,16 @@ Server.prototype.startListening = function(binder) {
 	server.listen (process.env.PORT || 8080, ()=> {console.log ("Server started on Port " + (process.env.PORT || 8080));});
 };
 
+Server.prototype.sendMessage = function(id, message, dev = false) {
+	this.clients[id].emit ('message', {message, dev}); 
+}
+
+Server.prototype.broadcast = function(message, dev = false) {
+	for (let i in this.clients) {
+		this.clients[i].emit ('message', {message, dev});
+	}
+}
+
 Server.prototype.handleInputs = function(keys, time, seq, id) {
 	//this.players[id].inputs.push({keyPresses:keys, time:time, seq:seq});
 };
@@ -137,20 +151,20 @@ Server.prototype.mainUpdate = function(){
 
 	this.lastState = { players:pack, time:this.localTime, ball:this.ball };
 	
-	/*for (let b in BULLETS) {
-		let bullet = BULLETS[b];
+	for (let b in this.bullets) {
+		let bullet =  this.bullets[b];
 		bullet.update (delta);
 		
 		if (bullet.isColliding ()) {
 			console.log ("bullet collision");
-			BULLETS.splice (BULLETS.indexOf(bullet), 1);
+			bullets.splice ( this.bullets.indexOf(bullet), 1);
 		}
-	}*/
+	}
 	
 	for (let e in this.clients) {
 		let client = this.clients[e];
 		client.emit ('serverupdate', this.lastState);
-		//client.emit ('bulletList', BULLETS);
+		client.emit ('bulletList', this.bullets);
 	}
 };
 
@@ -160,19 +174,33 @@ Server.prototype.updatePhysics = function() {
     if (typeof this.ball == 'undefined')
         return;
 
-	if (typeof this.players[this.ball.owner] != 'undefined' ) {
+	if (typeof this.players[this.ball.owner] != 'undefined' && !this.ball.touchdown ) {
 	    let owner = this.players[this.ball.owner];
 	    this.ball.x = owner.position.x + owner.size.x / 2 - this.ball.width/2;
-	    this.ball.y = owner.position.y - this.ball.height - 20;
+		this.ball.y = owner.position.y - this.ball.height - 20;
+		
+		if(this.map.getTypeByPos(owner.position)  == this.map.tileTypes["teamOneGoal"]) {
+			this.resetTimer = 100000;
+			this.ball.touchdown = true;
+			this.ball.x = 
+			this.ball.owner = undefined;
+			console.log(owner.name + " scored a touchdown");
+			this.broadcast(owner.name + " scored a touchdown!");
+		}
 
 	}
-	    for (let i in this.players) {
-        		let player = this.players[i];
 
-        		if (player.position.x + player.size.x >= this.ball.x && player.position.x <= this.ball.x + this.ball.width &&
-        		    player.position.y + player.size.y >= this.ball.y && player.position.y <= this.ball.y + this.ball.height) {
-        		        this.ball.owner = i;
-        		        console.log(player.name + " captured the ball");
-        		    }
-        	}
+	if(!this.ball.touchdown) {
+	    for (let i in this.players) {
+			let player = this.players[i];
+
+			if (player.position.x + player.size.x >= this.ball.x && player.position.x <= this.ball.x + this.ball.width &&
+				player.position.y + player.size.y >= this.ball.y && player.position.y <= this.ball.y + this.ball.height) {
+				this.ball.owner = i;
+				this.ball.touchdown = false;
+				console.log(player.name + " captured the ball");
+				this.broadcast(player.name + " captured the ball");
+			}
+		}
+	}
 };

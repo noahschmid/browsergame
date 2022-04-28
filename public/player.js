@@ -2,8 +2,8 @@
 
 const WALK_ACCELERATION = 1500;
 const RUN_ACCELERATION = 4000;
-const MAX_GRAVITY = 600;
-const GRAVITY = 2300;
+const MAX_GRAVITY = 2500;
+const GRAVITY = 3500;
 const PLAYER_HEIGHT = 64;
 const PLAYER_WIDTH = 64;
 const LEFT_MARGIN = 16;
@@ -11,7 +11,7 @@ const RIGHT_MARGIN = 16;
 const TOP_MARGIN = 5;
 const BOTTOM_MARGIN = 0;
 const BRAKE_SPEED = 2000;
-const JUMP_SPEED = 800;
+const JUMP_SPEED = GRAVITY/3;
 const DRAG_FACTOR = 1/6000;
 
 let animStates = { "idle":1, "walking":2, "jumping":3 };
